@@ -189,25 +189,25 @@ pythonrest generate --postgres-connection-string postgresql://<USER>:<PASSWORD>@
 Generate MySQL database-based APIs with ssh public key authentication:
 
 ```bash
-pythonrest generate --mysql-connection-string mysql://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>/<SCHEMA> --ssh-publickey-authentication-string ssh://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>?key_path=/path/your/public/key/id_rsa
+pythonrest generate --mysql-connection-string mysql://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>/<SCHEMA> --ssh-publickey-authentication-string ssh://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>?key_path=/path/your/public/key/id_rsa?local_bind_port=<LOCAL_BIND_PORT>
 ```
 
 Generate MariaDB database-based APIs with ssh public key authentication:
 
 ```bash
-pythonrest generate --mariadb-connection-string mariadb://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>/<SCHEMA> --ssh-publickey-authentication-string ssh://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>?key_path=/path/your/public/key/id_rsa
+pythonrest generate --mariadb-connection-string mariadb://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>/<SCHEMA> --ssh-publickey-authentication-string ssh://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>?key_path=/path/your/public/key/id_rsa?local_bind_port=<LOCAL_BIND_PORT>
 ```
 
 Generate SQLServer database-based APIs with ssh public key authentication:
 
 ```bash
-pythonrest generate --sqlserver-connection-string mssql://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>/<SCHEMA> --ssh-publickey-authentication-string ssh://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>?key_path=/path/your/public/key/id_rsa
+pythonrest generate --sqlserver-connection-string mssql://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>/<SCHEMA> --ssh-publickey-authentication-string ssh://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>?key_path=/path/your/public/key/id_rsa?local_bind_port=<LOCAL_BIND_PORT>
 ```
 
 Generate Postgres database-based APIs with ssh public key authentication:
 
 ```bash
-pythonrest generate --postgres-connection-string postgresql://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>/<DATABASE_NAME>?options=-c%20search_path=<SCHEMA>,public --ssh-publickey-authentication-string ssh://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>?key_path=/path/your/public/key/id_rsa
+pythonrest generate --postgres-connection-string postgresql://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>/<DATABASE_NAME>?options=-c%20search_path=<SCHEMA>,public --ssh-publickey-authentication-string ssh://<USER>:<PASSWORD>@<ENDPOINT>:<PORT>?key_path=/path/your/public/key/id_rsa?local_bind_port=<LOCAL_BIND_PORT>
 ```
 
 #### - SSL

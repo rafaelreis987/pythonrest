@@ -33,18 +33,18 @@ def generate_mysql_database_metadata(project_database, project_database_data, us
                 ssh_publickey_params['ssh_host'],
                 int(ssh_publickey_params['ssh_port']),
                 ssh_publickey_params['ssh_user'],
-                ssh_publickey_params['ssh_key_path'],
+                ssh_publickey_params['ssh_key_bytes'],
                 ssh_publickey_params['ssh_local_bind_port'])
         elif ssl_params:
             connected_schema = get_mysql_db_connection_with_ssl(
                 project_database_data[f'{project_database}_host'],
-                int(project_database_data[f'{project_database}_port']),
                 project_database_data[f'{project_database}_user'],
                 project_database_data[f'{project_database}_password'],
                 project_database_data[f'{project_database}_schema'],
-                ssl_params['ssl_ca'],
-                ssl_params['ssl_cert'],
-                ssl_params['ssl_key'],
+                ssl_params['ssl_ca_bytes'],
+                ssl_params['ssl_cert_bytes'],
+                ssl_params['ssl_key_bytes'],
+                int(project_database_data[f'{project_database}_port']),
                 ssl_params['ssl_hostname'])
         else:
             connected_schema = get_mysql_db_connection(

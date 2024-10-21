@@ -1,39 +1,103 @@
+import base64
+import os
+from io import StringIO
 from pymysql import *
 from databaseconnector.JSONDictHelper import retrieve_json_from_sql_query
 from sshtunnel import SSHTunnelForwarder
+import paramiko
+import tempfile
 
-def get_mysql_db_connection_with_ssl(
-        _host, _port, _user, _password, _database, ssl_ca, ssl_cert, ssl_key, ssl_hostname
-):
+
+def read_cert_from_pem_file(file_path):
+    with open(file_path, 'rb') as f:
+        pem_data = f.read()
+
+    if b"PRIVATE KEY" in pem_data:
+        pem_data = pem_data.replace(b"-----BEGIN PRIVATE KEY-----\n", b"")
+        pem_data = pem_data.replace(b"-----END PRIVATE KEY-----\n", b"")
+    else:
+        pem_data = pem_data.replace(b"-----BEGIN CERTIFICATE-----\n", b"")
+        pem_data = pem_data.replace(b"-----END CERTIFICATE-----\n", b"")
+
+    pem_data = pem_data.replace(b'\r\n', b'').replace(b'\n', b'')
+
+    return pem_data
+
+
+def write_cert_to_file(cert_content, prefix, suffix):
+    if isinstance(cert_content, bytes):
+        cert_content = cert_content.decode('utf-8')
+    temp_file = tempfile.NamedTemporaryFile(delete=False, prefix=prefix, suffix=suffix, mode='w')
+    temp_file.write(cert_content)
+    temp_file.close()
+    return temp_file.name
+
+
+def format_pem(cert_bytes, key_type):
+    pem = base64.b64encode(cert_bytes).decode('utf-8')
+    pem_lines = "\n".join(
+        [pem[i:i + 64] for i in range(0, len(pem), 64)])
+
+    if key_type == "PRIVATE KEY":
+        return f"-----BEGIN PRIVATE KEY-----\n{pem_lines}\n-----END PRIVATE KEY-----"
+    else:
+        return f"-----BEGIN CERTIFICATE-----\n{pem_lines}\n-----END CERTIFICATE-----"
+
+
+def get_mysql_db_connection_with_ssl(_host, _user, _password, _schema, ssl_ca, ssl_cert, ssl_key, _port, ssl_hostname):
+    connection = None
+
     try:
+        ca_file = write_cert_to_file(ssl_ca, 'ca_', '.pem')
+        cert_file = write_cert_to_file(ssl_cert, 'cert_', '.pem')
+        key_file = write_cert_to_file(ssl_key, 'key_', '.pem')
+
+        ssl = {
+            'ssl_ca': ca_file,
+            'ssl_cert': cert_file,
+            'ssl_key': key_file,
+            'check_hostname': False
+        }
+
         con = connect(
-            host=ssl_hostname,
             user=_user,
             password=_password,
-            db=_database,
+            host=ssl_hostname,
             port=_port,
-            ssl={
-                'ca': ssl_ca,
-                'cert': ssl_cert,
-                'key': ssl_key,
-                'check_hostname': True
-            }
+            database=_schema,
+            ssl_ca=ca_file,
+            ssl_cert=cert_file,
+            ssl_key=key_file
         )
+
 
         cursor = con.cursor()
         return cursor
 
     except Exception as e:
         print(f"Failed to connect: {e}")
+        return None
+
+    finally:
+        for file_path in [ca_file, cert_file, key_file]:
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
+
 
 def get_mysql_db_connection_with_ssh_publickey(
-        _host, _port, _user, _password, _database, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_local_bind_port
+        _host, _port, _user, _password, _database, ssh_host, ssh_port, ssh_user, ssh_pkey_bytes, ssh_local_bind_port
 ):
+    tunnel = None
     try:
+        private_key_binary = base64.b64decode(ssh_pkey_bytes)
+
+        pkey_file = StringIO(private_key_binary.decode())
+        pkey = paramiko.RSAKey.from_private_key(pkey_file)
+
         tunnel = SSHTunnelForwarder(
             ssh_address_or_host=(ssh_host, ssh_port),
             ssh_username=ssh_user,
-            ssh_pkey=ssh_key_path,
+            ssh_pkey=pkey,
             remote_bind_address=(_host, _port),
             local_bind_address=(ssh_host, ssh_local_bind_port),
             set_keepalive=10
@@ -54,6 +118,7 @@ def get_mysql_db_connection_with_ssh_publickey(
 
     except Exception as e:
         print(f"Failed to connect: {e}")
+
 
 def get_mysql_db_connection_with_ssh_password(
         _host, _port, _user, _password, _database, ssh_host, ssh_port, ssh_user, ssh_password, ssh_local_bind_port
@@ -83,6 +148,7 @@ def get_mysql_db_connection_with_ssh_password(
 
     except Exception as e:
         print(f"Failed to connect: {e}")
+
 
 def get_mysql_db_connection(_host, _port, _user, _password, _database):
     con = connect(host=_host, port=_port, user=_user,
