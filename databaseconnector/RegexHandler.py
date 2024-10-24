@@ -1,11 +1,23 @@
 import re
 from pathlib import Path
 import os
+import base64
 
 
-def read_file_as_bytes(file_path):
-    with open(file_path, "rb") as pem_file:
-        return pem_file.read()
+def read_cert_from_pem_file(file_path):
+    with open(file_path, 'r') as f:
+        pem_data = f.read()
+
+    if "PRIVATE KEY" in pem_data:
+        pem_data = pem_data.replace("-----BEGIN PRIVATE KEY-----\n", "")
+        pem_data = pem_data.replace("-----END PRIVATE KEY-----\n", "")
+    else:
+        pem_data = pem_data.replace("-----BEGIN CERTIFICATE-----\n", "")
+        pem_data = pem_data.replace("-----END CERTIFICATE-----\n", "")
+
+    cert_bytes = base64.b64decode(pem_data)
+    base64_cert = base64.b64encode(cert_bytes).decode('utf-8')
+    return base64_cert
 
 
 def extract_ssl_params(connection_string):
@@ -21,14 +33,13 @@ def extract_ssl_params(connection_string):
         ssl_cert_path = Path(match.group(2)).as_posix()
         ssl_key_path = Path(match.group(3)).as_posix()
 
-        ssl_ca_bytes = read_file_as_bytes(ssl_ca_path)
-        ssl_cert_bytes = read_file_as_bytes(ssl_cert_path)
-        ssl_key_bytes = read_file_as_bytes(ssl_key_path)
+        ssl_ca_bytes = read_cert_from_pem_file(ssl_ca_path)
+        ssl_cert_bytes = read_cert_from_pem_file(ssl_cert_path)
+        ssl_key_bytes = read_cert_from_pem_file(ssl_key_path)
 
-        # Definindo variáveis de ambiente como strings
-        os.environ['ssl_ca_bytes'] = ssl_ca_bytes.decode('utf-8')  # Remove o 'b' e converte para string
-        os.environ['ssl_cert_bytes'] = ssl_cert_bytes.decode('utf-8')
-        os.environ['ssl_key_bytes'] = ssl_key_bytes.decode('utf-8')
+        os.environ['ssl_ca_bytes'] = ssl_ca_bytes
+        os.environ['ssl_cert_bytes'] = ssl_cert_bytes
+        os.environ['ssl_key_bytes'] = ssl_key_bytes
         os.environ['ssl_hostname'] = match.group(4)
 
         return {
@@ -41,21 +52,17 @@ def extract_ssl_params(connection_string):
     match = byte_pattern.match(connection_string)
 
     if match:
-        ssl_ca_bytes = match.group(1).encode('utf-8')
-        ssl_cert_bytes = match.group(2).encode('utf-8')
-        ssl_key_bytes = match.group(3).encode('utf-8')
+        ssl_ca_bytes = match.group(1)
+        ssl_cert_bytes = match.group(2)
+        ssl_key_bytes = match.group(3)
+        ssl_hostname = match.group(4)
 
-        # Definindo variáveis de ambiente como strings
-        os.environ['ssl_ca_bytes'] = ssl_ca_bytes.decode('utf-8')
-        os.environ['ssl_cert_bytes'] = ssl_cert_bytes.decode('utf-8')
-        os.environ['ssl_key_bytes'] = ssl_key_bytes.decode('utf-8')
-        os.environ['ssl_hostname'] = match.group(4)
 
         return {
             "ssl_ca_bytes": ssl_ca_bytes,
             "ssl_cert_bytes": ssl_cert_bytes,
             "ssl_key_bytes": ssl_key_bytes,
-            "ssl_hostname": match.group(4),
+            "ssl_hostname": ssl_hostname,
         }
 
     raise ValueError("Invalid SSL connection string format.")
@@ -70,7 +77,7 @@ def extract_ssh_publickey_params(connection_string):
 
     if match:
         ssh_key_path = Path(match.group(4)).as_posix()
-        ssh_key_bytes = read_file_as_bytes(ssh_key_path)
+        ssh_key_bytes = read_cert_from_pem_file(ssh_key_path)
 
         return {
             "ssh_user": match.group(1),

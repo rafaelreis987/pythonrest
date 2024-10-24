@@ -5,35 +5,16 @@ from pymysql import *
 from databaseconnector.JSONDictHelper import retrieve_json_from_sql_query
 from sshtunnel import SSHTunnelForwarder
 import paramiko
-import tempfile
 
 
-def read_cert_from_pem_file(file_path):
-    with open(file_path, 'rb') as f:
-        pem_data = f.read()
-
-    if b"PRIVATE KEY" in pem_data:
-        pem_data = pem_data.replace(b"-----BEGIN PRIVATE KEY-----\n", b"")
-        pem_data = pem_data.replace(b"-----END PRIVATE KEY-----\n", b"")
-    else:
-        pem_data = pem_data.replace(b"-----BEGIN CERTIFICATE-----\n", b"")
-        pem_data = pem_data.replace(b"-----END CERTIFICATE-----\n", b"")
-
-    pem_data = pem_data.replace(b'\r\n', b'').replace(b'\n', b'')
-
-    return pem_data
+def write_cert_to_pem_file(cert_bytes, file_path, key_type):
+    pem_string = format_pem(cert_bytes, key_type)
+    with open(file_path, 'w') as f:
+        f.write(pem_string)
 
 
-def write_cert_to_file(cert_content, prefix, suffix):
-    if isinstance(cert_content, bytes):
-        cert_content = cert_content.decode('utf-8')
-    temp_file = tempfile.NamedTemporaryFile(delete=False, prefix=prefix, suffix=suffix, mode='w')
-    temp_file.write(cert_content)
-    temp_file.close()
-    return temp_file.name
-
-
-def format_pem(cert_bytes, key_type):
+def format_pem(base64_data, key_type):
+    cert_bytes = base64.b64decode(base64_data)
     pem = base64.b64encode(cert_bytes).decode('utf-8')
     pem_lines = "\n".join(
         [pem[i:i + 64] for i in range(0, len(pem), 64)])
@@ -44,43 +25,38 @@ def format_pem(cert_bytes, key_type):
         return f"-----BEGIN CERTIFICATE-----\n{pem_lines}\n-----END CERTIFICATE-----"
 
 
-def get_mysql_db_connection_with_ssl(_host, _user, _password, _schema, ssl_ca, ssl_cert, ssl_key, _port, ssl_hostname):
-    connection = None
-
+def get_mysql_db_connection_with_ssl(_host, _user, _password, _database, ssl_ca_bytes, ssl_cert_bytes, ssl_key_bytes, _port, ssl_hostname):
     try:
-        ca_file = write_cert_to_file(ssl_ca, 'ca_', '.pem')
-        cert_file = write_cert_to_file(ssl_cert, 'cert_', '.pem')
-        key_file = write_cert_to_file(ssl_key, 'key_', '.pem')
+        ssl_ca_file_path = 'ca.pem'
+        ssl_key_file_path = 'key.pem'
+        ssl_cert_file_path = 'cert.pem'
 
-        ssl = {
-            'ssl_ca': ca_file,
-            'ssl_cert': cert_file,
-            'ssl_key': key_file,
-            'check_hostname': False
-        }
+        write_cert_to_pem_file(ssl_ca_bytes, ssl_ca_file_path, "CERTIFICATE")
+        write_cert_to_pem_file(ssl_key_bytes, ssl_key_file_path, "PRIVATE KEY")
+        write_cert_to_pem_file(ssl_cert_bytes, ssl_cert_file_path, "CERTIFICATE")
 
         con = connect(
-            user=_user,
-            password=_password,
             host=ssl_hostname,
             port=_port,
-            database=_schema,
-            ssl_ca=ca_file,
-            ssl_cert=cert_file,
-            ssl_key=key_file
+            user=_user,
+            password=_password,
+            db=_database,
+            ssl={
+                'ca': ssl_ca_file_path,
+                'cert': ssl_cert_file_path,
+                'key': ssl_key_file_path,
+                'check_hostname': False,
+                'ssl_verify_cert': False
+            }
         )
-
-
         cursor = con.cursor()
         return cursor
 
     except Exception as e:
-        print(f"Failed to connect: {e}")
-        return None
-
+        raise e
     finally:
-        for file_path in [ca_file, cert_file, key_file]:
-            if file_path and os.path.exists(file_path):
+        for file_path in [ssl_ca_file_path, ssl_key_file_path, ssl_cert_file_path]:
+            if os.path.exists(file_path):
                 os.remove(file_path)
 
 

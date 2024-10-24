@@ -16,9 +16,9 @@ def get_mysql_connection_schema_internet():
             ssl_key_file_path = 'key.pem'
             ssl_cert_file_path = 'cert.pem'
 
-            write_ssl_bytes_to_pem_file('ssl_ca_bytes', ssl_ca_file_path, "CERTIFICATE")
-            write_ssl_bytes_to_pem_file('ssl_key_bytes', ssl_key_file_path, "PRIVATE KEY")
-            write_ssl_bytes_to_pem_file('ssl_cert_bytes', ssl_cert_file_path, "CERTIFICATE")
+            write_ssl_bytes_to_pem_file(get_global_variable('ssl_ca_bytes'), ssl_ca_file_path, "CERTIFICATE")
+            write_ssl_bytes_to_pem_file(get_global_variable('ssl_key_bytes'), ssl_key_file_path, "PRIVATE KEY")
+            write_ssl_bytes_to_pem_file(get_global_variable('ssl_cert_bytes'), ssl_cert_file_path, "CERTIFICATE")
 
             mysql_internet_conn = 'mysql+pymysql://' + get_global_variable('mysql_user') + ':' \
                                   + get_global_variable('mysql_password') + '@' \
