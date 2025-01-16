@@ -77,7 +77,8 @@ def extract_ssh_publickey_params(connection_string):
 
     if match:
         ssh_key_path = Path(match.group(4)).as_posix()
-        ssh_key_bytes = read_cert_from_pem_file(ssh_key_path)
+        with open(ssh_key_path, 'rb') as f:
+            ssh_key_bytes = base64.b64encode(f.read()).decode('utf-8')
 
         return {
             "ssh_user": match.group(1),
