@@ -2,6 +2,7 @@ from pymssql import *
 from sshtunnel import SSHTunnelForwarder
 from pathlib import Path
 
+
 def get_sqlserver_db_connection_with_ssl(
         server, port, user, password, database, ssl_ca, ssl_cert, ssl_key, ssl_hostname
 ):
@@ -16,7 +17,8 @@ def get_sqlserver_db_connection_with_ssl(
                 'ca': ssl_ca,
                 'cert': ssl_cert,
                 'key': ssl_key,
-                'check_hostname': False # TODO Configuração apenas para nivel de teste, para produção necessario a remoção desta linha.
+                'check_hostname': False
+                # TODO Configuração apenas para nivel de teste, para produção necessario a remoção desta linha.
             }
         )
 
@@ -25,6 +27,7 @@ def get_sqlserver_db_connection_with_ssl(
 
     except Exception as e:
         print(f"Failed to connect: {e}")
+
 
 def get_sqlserver_db_connection_with_ssh_publickey(
         server, port, user, password, database, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_local_bind_port
@@ -102,7 +105,11 @@ def convert_retrieved_tuple_name_list_from_sqlserver(table_name_tuple_list):
 
 
 def retrieve_table_name_tuple_list_from_connected_database(connected_database_cursor):
-    connected_database_cursor.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES")
+    connected_database_cursor.execute("""
+        SELECT TABLE_NAME 
+        FROM INFORMATION_SCHEMA.TABLES 
+        WHERE TABLE_TYPE = 'BASE TABLE'
+    """)
     response = connected_database_cursor.fetchall()
     return response
 
@@ -158,7 +165,8 @@ def retrieve_table_auto_incremente_from_connected_database(column, table_name, c
     return response.get('is_identity', False)
 
 
-def retrieve_references_table_foreign_keys_from_tables_from_connected_database(column, table_name, connected_database_cursor):
+def retrieve_references_table_foreign_keys_from_tables_from_connected_database(column, table_name,
+                                                                               connected_database_cursor):
     sql_query = """
     SELECT 
         obj.name AS FK_NAME, 
