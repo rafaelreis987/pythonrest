@@ -1,6 +1,9 @@
 from setuptools import setup
 import os
 
+def read_file(filename):
+    with open(filename, encoding="utf-8") as f:
+        return f.read()
 
 def find_packages_custom(start_directory='.', include=None, prefix='pythonrest'):
     if include is None:
@@ -30,9 +33,11 @@ def list_files_by_extension(directory='.', extension=()):
 
 setup(
     name='pythonrest3',
+
     version='0.2.9',
     description='A CLI tool that generates a complete API using a connection string for supported databases: mysql, mssql, mariadb and postgres',
 long_description=(
+
         "# PythonREST\n\n"
         "PythonREST is the ultimate full API generator for Python language. Based on the best performing frameworks "
         "and software development best practices, PythonREST can create an entire CRUD API in minutes or seconds "
@@ -63,6 +68,7 @@ long_description=(
         "* SQL Views are no longer listed as routes in the generated API\n"
         "* Fixing some cases where exceptions were improperly returned as byte-like objects\n"
         "* Fixing `[or]` filter in GET routes when using multiple query parameters simultaneously\n"
+
         "* Improving rendering of Swagger and Redoc pages\n\n"
         "**Version 0.2.8**\n"
         "* Small fixes to swagger improved rendering\n\n"
@@ -71,6 +77,7 @@ long_description=(
         "**Version 0.3.0**\n"
        "* New `{now}` expression for auto-generating current date/time on create, update, and delete requests\n"
     ),
+
     author='Seven Technologies Cloud',
     author_email='admin@seventechnologies.cloud',
     maintainer='Seven Technologies Cloud',
