@@ -5,7 +5,7 @@ import glob
 import logging
 import collections.abc
 # PathResolver will be used to get the project root and then the config/swagger directory
-from src.e_Infra.g_McpInfra.PathResolver import get_swagger_config_dir
+from src.e_Infra.MCP.PathResolver import get_swagger_config_dir
 
 logger = logging.getLogger(__name__)
 

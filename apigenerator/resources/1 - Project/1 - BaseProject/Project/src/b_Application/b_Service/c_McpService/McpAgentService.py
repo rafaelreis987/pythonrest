@@ -8,7 +8,7 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, Base
 from langchain_core.language_models.chat_models import BaseChatModel
 
 # EnvironmentVariables are used by ModelLoader and SpecProviderService now
-from src.e_Infra.g_McpModels.ModelLoader import load_model
+from src.e_Infra.MCP.ModelLoader import load_model
 from .McpTools import ( # Import refactored tools
     find_endpoint,
     analyze_swagger,

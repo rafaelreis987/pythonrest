@@ -1,7 +1,6 @@
 import anthropic # Anthropic's official Python library
 import logging
-# Updated import path for LlmServiceBase
-from src.e_Infra.g_McpInfra.b_LlmManager.LlmServiceBase import LlmServiceBase
+from src.e_Infra.MCP.LlmServiceBase import LlmServiceBase
 
 logger = logging.getLogger(__name__)
 
@@ -10,22 +9,21 @@ class AnthropicService(LlmServiceBase):
     A service class to encapsulate interactions with the Anthropic API,
     adhering to the LlmServiceBase interface.
     """
-    DEFAULT_MODEL_NAME = "claude-3-haiku-20240307" # As per new defaults
-    DEFAULT_TEMPERATURE = 0.7                      # As per new defaults
-    DEFAULT_MAX_OUTPUT_TOKENS = 2048               # As per new defaults (Anthropic uses max_tokens_to_sample or max_tokens in messages.create)
+    # Using a common, recent Haiku model as default. Update as new models become standard.
+    DEFAULT_MODEL_NAME = "claude-3-haiku-20240307"
+    DEFAULT_TEMPERATURE = 0.7
 
-    def __init__(self, api_key: str, model_name: str = None, temperature: float = None, max_output_tokens: int = None):
+    def __init__(self, api_key: str, model_name: str = None, temperature: float = None):
         """
         Initializes the AnthropicService.
 
         Args:
             api_key (str): The Anthropic API key.
-            model_name (str, optional): Specific Anthropic model. Defaults to self.DEFAULT_MODEL_NAME.
+            model_name (str, optional): The specific Anthropic model name to use. Defaults to "claude-3-haiku-20240307".
             temperature (float, optional): Sampling temperature. Defaults to self.DEFAULT_TEMPERATURE.
-            max_output_tokens (int, optional): Max tokens for response. Defaults to self.DEFAULT_MAX_OUTPUT_TOKENS.
         Raises:
-            ValueError: If API key is not provided or params are invalid.
-            RuntimeError: If Anthropic client initialization fails.
+            ValueError: If the API key is not provided or temperature is invalid.
+            RuntimeError: If initialization of the Anthropic client fails.
         """
         if not api_key:
             logger.error("API key not provided for AnthropicService initialization.")
@@ -40,26 +38,14 @@ class AnthropicService(LlmServiceBase):
                 if not (0.0 <= self.temperature <= 1.0): # Anthropic typical range
                      logger.warning(f"Temperature {self.temperature} for Anthropic is outside typical range (0.0-1.0). Using it anyway.")
             except ValueError:
-                logger.error(f"Invalid temperature value '{temperature}'. Must be a float. Using default {self.DEFAULT_TEMPERATURE}.")
+                logger.error(f"Invalid temperature value '{temperature}'. Must be a float. Using default.")
                 self.temperature = self.DEFAULT_TEMPERATURE
         else:
             self.temperature = self.DEFAULT_TEMPERATURE
 
-        if max_output_tokens is not None:
-            try:
-                self.max_output_tokens = int(max_output_tokens)
-                if self.max_output_tokens <= 0:
-                    logger.warning(f"Invalid max_output_tokens {self.max_output_tokens}. Must be positive. Using default {self.DEFAULT_MAX_OUTPUT_TOKENS}.")
-                    self.max_output_tokens = self.DEFAULT_MAX_OUTPUT_TOKENS
-            except ValueError:
-                logger.error(f"Invalid max_output_tokens value '{max_output_tokens}'. Must be an int. Using default {self.DEFAULT_MAX_OUTPUT_TOKENS}.")
-                self.max_output_tokens = self.DEFAULT_MAX_OUTPUT_TOKENS
-        else:
-            self.max_output_tokens = self.DEFAULT_MAX_OUTPUT_TOKENS
-
         try:
             self.client = anthropic.Anthropic(api_key=self.api_key)
-            logger.info(f"AnthropicService initialized: model='{self.model_name}', temperature={self.temperature}, max_output_tokens={self.max_output_tokens}.")
+            logger.info(f"AnthropicService initialized: model='{self.model_name}', temperature={self.temperature}.")
         except Exception as e:
             logger.error(f"Error during AnthropicService init (model: {self.model_name}): {e}", exc_info=True)
             raise RuntimeError(f"Failed to initialize Anthropic Service (model: {self.model_name}): {e}")
@@ -83,9 +69,11 @@ class AnthropicService(LlmServiceBase):
             return ""
 
         try:
+            # Anthropic's API uses a `messages` structure.
+            # The `max_tokens` parameter is typically required.
             message = self.client.messages.create(
                 model=self.model_name,
-                max_tokens=self.max_output_tokens,
+                max_tokens=2048, # Adjust as needed, consider making configurable
                 temperature=self.temperature,
                 messages=[
                     {
@@ -94,36 +82,48 @@ class AnthropicService(LlmServiceBase):
                     }
                 ]
             )
+            # The response structure gives content blocks; typically, the first one is text.
             if message.content and isinstance(message.content, list) and len(message.content) > 0:
+                # Assuming the first content block is of type 'text'
+                # You might want to iterate or check block types if more complex content is expected
+                # Also, ensure the text attribute exists, which it should for text blocks.
                 if hasattr(message.content[0], 'text'):
                     return message.content[0].text.strip()
-                else:
+                else: # Should not happen if content block is text type
                     logger.error("Anthropic API returned a content block of unexpected type or without text.")
                     raise RuntimeError("Anthropic API returned no text content in the expected block type.")
             else:
                 logger.error("Anthropic API returned an unexpected response structure or empty content.")
                 raise RuntimeError("Anthropic API returned no content.")
-        except anthropic.APIError as e:
+        except anthropic.APIError as e: # Catch specific Anthropic errors
             logger.error(f"Anthropic API error during text generation (model: {self.model_name}): {e}", exc_info=True)
             raise RuntimeError(f"Failed to generate text using Anthropic (model: {self.model_name}): {e}")
-        except Exception as e:
+        except Exception as e: # Catch other potential errors
             logger.error(f"Unexpected error during Anthropic text generation (model: {self.model_name}): {e}", exc_info=True)
             raise RuntimeError(f"An unexpected error occurred with Anthropic (model: {self.model_name}): {e}")
 
     def check_connection(self) -> bool:
         """
         Performs a lightweight check for the Anthropic client.
+        Anthropic's Python library doesn't have a direct 'list_models' or similar lightweight check
+        that doesn't consume message credits without making an actual content generation call.
+        A very short, inexpensive prompt is the most reliable way to check.
+        Alternatively, we can assume if the client initializes without error, the setup is okay,
+        but this doesn't verify the API key's validity against the backend.
+        For now, we'll try a very minimal generation call.
         """
         try:
+            # Attempt a very short, inexpensive generation call.
+            # This will consume a minimal amount of credits but actually tests the API key.
             self.client.messages.create(
                 model=self.model_name,
-                max_tokens=10, # Minimal tokens for a health check
-                temperature=self.temperature, # Use configured temperature
+                max_tokens=10,
                 messages=[{"role": "user", "content": "Health check."}]
             )
             logger.info("Anthropic API connection check successful (via minimal generation).")
             return True
         except anthropic.APIError as e:
+            # Specifically catch authentication errors if possible, though any APIError suggests a problem.
             if isinstance(e, anthropic.AuthenticationError):
                  logger.error(f"Anthropic API connection check failed: AuthenticationError: {e}", exc_info=True)
             else:
