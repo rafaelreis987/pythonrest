@@ -92,6 +92,9 @@ Support for column names that contain unusual characters, like "-", " ", ".", "/
 **Version 0.3.7:**
 * Adding metadata to reserved keyword formatter
 
+"**Version 0.3.8**\n"
+* Consolidate mcp artifacts into a single h_MCP folder on generated API
+
 
 ## Installation
 
