@@ -5,10 +5,10 @@ from src.e_Infra.CustomVariables import (
     ENV_DEFAULT_GEMINI_MODEL_NAME, ENV_DEFAULT_OPENAI_MODEL_NAME, ENV_DEFAULT_ANTHROPIC_MODEL_NAME,
     ENV_DEFAULT_GEMINI_TEMPERATURE, ENV_DEFAULT_OPENAI_TEMPERATURE, ENV_DEFAULT_ANTHROPIC_TEMPERATURE
 )
-from src.e_Infra.k_ConfigManager.LlmConfigManager import LlmConfigManager
-from src.e_Infra.g_GeminiClient.GeminiService import GeminiService
-from src.e_Infra.h_OpenAIClient.OpenAIService import OpenAIService
-from src.e_Infra.i_AnthropicClient.AnthropicService import AnthropicService
+from src.e_Infra.h_MCP.LlmConfigManager import LlmConfigManager
+from src.e_Infra.h_MCP.GeminiService import GeminiService
+from src.e_Infra.h_MCP.OpenAIService import OpenAIService
+from src.e_Infra.h_MCP.AnthropicService import AnthropicService
 from .LlmServiceBase import LlmServiceBase
 
 logger = logging.getLogger(__name__)

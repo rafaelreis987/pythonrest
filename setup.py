@@ -86,7 +86,9 @@ setup(
         "**Version 0.3.6**\n"
         "* Introduced Model Context Protocol (MCP) endpoints for dynamic LLM configuration and interaction.\n\n"
         "**Version 0.3.7**\n"
-        "* Adding metadata to reserved keyword formatter.\n"
+        "* Adding metadata to reserved keyword formatter.\n\n"
+        "**Version 0.3.8**\n"
+        "* Consolidate mcp artifacts into a single h_MCP folder on generated API\n"
     ),
     long_description_content_type="text/markdown",
     author='Seven Technologies Cloud',

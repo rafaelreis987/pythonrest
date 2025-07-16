@@ -6,8 +6,8 @@ import logging
 import collections.abc
 from flask import current_app # Keep for robust pathing if available
 
-from src.e_Infra.g_McpInfra import LlmServiceBase
-from src.e_Infra.g_McpInfra.PathResolver import get_swagger_config_dir # Import new utility
+from src.e_Infra.h_MCP import LlmServiceBase
+from src.e_Infra.h_MCP.PathResolver import get_swagger_config_dir # Import new utility
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ _project_root_cache = None
 def get_project_root() -> str:
     """
     Determines the project root directory using a fixed relative path from this file's location.
-    PathResolver.py is expected to be in ProjectRoot/src/e_Infra/g_McpInfra/
+    PathResolver.py is expected to be in ProjectRoot/src/e_Infra/h_MCP/
     ProjectRoot is 3 levels up from this file's directory.
     Caches the result after the first successful determination.
 
@@ -19,8 +19,8 @@ def get_project_root() -> str:
     if _project_root_cache:
         return _project_root_cache
 
-    # PathResolver.py is expected to be in ProjectRoot/src/e_Infra/g_McpInfra/
-    # current_file_dir is .../ProjectRoot/src/e_Infra/g_McpInfra
+    # PathResolver.py is expected to be in ProjectRoot/src/e_Infra/h_MCP/
+    # current_file_dir is .../ProjectRoot/src/e_Infra/h_MCP
     current_file_dir = os.path.abspath(os.path.dirname(__file__))
 
     # ../ -> .../ProjectRoot/src/e_Infra/

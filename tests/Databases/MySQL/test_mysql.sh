@@ -35,7 +35,7 @@ log "Starting MySQL integration test script."
 
 # 2. Start MySQL Docker container
 log "Starting MySQL Docker container..."
-docker-compose up -d
+sudo docker-compose up -d
 if [ $? -ne 0 ]; then
     log "ERROR: Failed to start MySQL Docker container."
     exit 1 # Trap will handle venv deactivation if it was activated
@@ -43,7 +43,7 @@ fi
 log "MySQL Docker container started."
 
 # 3. Wait for MySQL container to be healthy
-MYSQL_CONTAINER_NAME="pythonrest-mysql-1" # Adjust if your container name is different in docker-compose.yml
+MYSQL_CONTAINER_NAME="mysql-mysql-1" # Adjust if your container name is different in docker-compose.yml
 log "Waiting for MySQL container ($MYSQL_CONTAINER_NAME) to be healthy..."
 TIMEOUT_SECONDS=120
 SECONDS_WAITED=0
@@ -71,21 +71,23 @@ while true; do
 done
 
 # 4. Activate Shared PythonREST Venv
-log "Activating shared PythonREST virtual environment: $PROJECT_ROOT/venv/bin/activate"
-if [ ! -f "$PROJECT_ROOT/venv/bin/activate" ]; then
-    log "ERROR: PythonREST venv activate script not found at $PROJECT_ROOT/venv/bin/activate"
+log "Activating shared PythonREST virtual environment: $PROJECT_ROOT/../venv/bin/activate"
+if [ ! -f "$PROJECT_ROOT/../venv/bin/activate" ]; then
+    log "ERROR: PythonREST venv activate script not found at $PROJECT_ROOT/../venv/bin/activate"
     docker-compose down
     exit 1 # Trap will handle venv deactivation if it was activated (though unlikely here)
 fi
 # shellcheck source=/dev/null
-source "$PROJECT_ROOT/venv/bin/activate"
+source "$PROJECT_ROOT/../venv/bin/activate"
 PYTHONREST_VENV_ACTIVATED=true # Mark as activated for trap
 log "Shared PythonREST virtual environment activated."
 
 # 5. Run PythonREST generation
-log "Running PythonREST generation using $PROJECT_ROOT/pythonrest.py..."
-python "$PROJECT_ROOT/pythonrest.py" generate --mysql-connection-string mysql://admin:adminuserdb@localhost:3306/database_mapper_mysql > /tmp/pythonrest_generate_mysql.log 2>&1
+log "Running PythonREST generation using $PROJECT_ROOT/../pythonrest.py..."
+cd "$PROJECT_ROOT/.."
+python "pythonrest.py" generate --mysql-connection-string mysql://admin:adminuserdb@localhost:3306/database_mapper_mysql > /tmp/pythonrest_generate_mysql.log 2>&1
 GENERATION_STATUS=$?
+cd "$SCRIPT_DIR"
 if [ $GENERATION_STATUS -ne 0 ]; then
     log "ERROR: PythonREST generation failed. See /tmp/pythonrest_generate_mysql.log for details."
     cat /tmp/pythonrest_generate_mysql.log
@@ -95,18 +97,18 @@ if [ $GENERATION_STATUS -ne 0 ]; then
 fi
 log "PythonREST generation output logged to /tmp/pythonrest_generate_mysql.log."
 
-# 6. Log PythonREST generation status and check for generated_api folder
-# generated_api folder will be created in the current directory ($SCRIPT_DIR)
-if [ ! -d "generated_api" ]; then
-    log "ERROR: 'generated_api' folder not found in $SCRIPT_DIR after PythonREST generation."
+# 6. Log PythonREST generation status and check for PythonRestAPI folder
+# PythonRestAPI folder will be created in the project root directory
+if [ ! -d "$PROJECT_ROOT/../PythonRestAPI" ]; then
+    log "ERROR: 'PythonRestAPI' folder not found in $PROJECT_ROOT/.. after PythonREST generation."
     # Deactivation will be handled by trap
     docker-compose down
     exit 1
 fi
-log "PythonREST generation successful. 'generated_api' folder found in $SCRIPT_DIR."
+log "PythonREST generation successful. 'PythonRestAPI' folder found in $PROJECT_ROOT/.. ."
 
-# 7. Change directory to generated_api
-cd generated_api || exit
+# 7. Change directory to PythonRestAPI
+cd "$PROJECT_ROOT/../PythonRestAPI" || exit
 log "Changed directory to $(pwd)."
 
 # 8. Create Python virtual environment for the generated API
@@ -145,14 +147,14 @@ log "Dependencies for generated API installed successfully. Output logged to /tm
 
 # 11. Start the Flask API in the background
 log "Starting Flask API in the background..."
-python app.py > /tmp/api_output_mysql.log 2>&1 &
+setsid python app.py > /tmp/api_output_mysql.log 2>&1 &
 API_PID=$!
 log "Flask API started with PID $API_PID. Output logged to /tmp/api_output_mysql.log."
 
 # 12. Wait for API to start and check
 log "Waiting for API to start (5 seconds)..."
 sleep 5
-curl -f http://localhost:5000 > /tmp/curl_check_mysql.log 2>&1
+curl -f http://localhost:5000/mcp/ask/configure > /tmp/curl_check_mysql.log 2>&1
 CURL_STATUS=$?
 if [ $CURL_STATUS -ne 0 ]; then
     log "ERROR: API failed to start or is not responding. Curl check failed. See /tmp/curl_check_mysql.log."
@@ -171,8 +173,8 @@ log "API started and responding."
 rm /tmp/curl_check_mysql.log # Clean up successful check log
 
 # 13. Perform a sample curl GET request
-log "Performing sample GET request to http://localhost:5000/ (actual table endpoint might differ)..."
-curl http://localhost:5000/ > /tmp/curl_test_mysql.log 2>&1
+log "Performing sample GET request to http://localhost:5000/mcp/ask/configure (actual table endpoint might differ)..."
+curl http://localhost:5000/mcp/ask/configure > /tmp/curl_test_mysql.log 2>&1
 if [ $? -ne 0 ]; then
     log "WARNING: Sample curl GET request failed. This might indicate an issue or no default route. See /tmp/curl_test_mysql.log."
     cat /tmp/curl_test_mysql.log
@@ -182,7 +184,7 @@ fi
 
 # 14. Kill the Flask API process
 log "Killing Flask API (PID $API_PID)..."
-kill $API_PID
+sudo kill $API_PID
 wait $API_PID 2>/dev/null # Suppress "Terminated" message
 log "Flask API process killed."
 
@@ -203,7 +205,7 @@ log "Shared PythonREST virtual environment deactivated."
 
 # 18. Stop and remove Docker container
 log "Stopping and removing MySQL Docker container..."
-docker-compose down
+sudo docker-compose down
 if [ $? -ne 0 ]; then
     log "WARNING: docker-compose down command failed. Manual cleanup might be required."
 fi
