@@ -3,7 +3,7 @@ import logging
 from . import mcp_configure_bp # Import the blueprint from this package's __init__
 
 # Assuming LlmConfigManager is in the k_ConfigManager package within e_Infra
-from src.e_Infra.MCP.LlmConfigManager import LlmConfigManager
+from src.e_Infra.h_MCP.LlmConfigManager import LlmConfigManager
 
 logger = logging.getLogger(__name__)
 

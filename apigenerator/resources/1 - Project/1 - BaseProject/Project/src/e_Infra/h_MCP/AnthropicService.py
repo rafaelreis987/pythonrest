@@ -1,6 +1,6 @@
 import anthropic # Anthropic's official Python library
 import logging
-from src.e_Infra.MCP.LlmServiceBase import LlmServiceBase
+from src.e_Infra.h_MCP.LlmServiceBase import LlmServiceBase
 
 logger = logging.getLogger(__name__)
 

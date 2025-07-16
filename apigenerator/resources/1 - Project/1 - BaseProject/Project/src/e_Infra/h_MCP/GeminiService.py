@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Updated import path for LlmServiceBase
-from src.e_Infra.MCP.LlmServiceBase import LlmServiceBase
+from src.e_Infra.h_MCP.LlmServiceBase import LlmServiceBase
 
 
 class GeminiService(LlmServiceBase):
