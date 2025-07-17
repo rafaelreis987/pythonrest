@@ -241,17 +241,11 @@ Write-Log "Virtual environment for generated API deactivated."
 Set-Location $SCRIPT_DIR
 Write-Log "Changed directory to $(Get-Location)."
 
-# 17. Desativar venv PythonREST
-Write-Log "Deactivating shared PythonREST virtual environment (explicitly)..."
-deactivate
-$script:PYTHONREST_VENV_ACTIVATED = $false
-Write-Log "Shared PythonREST virtual environment deactivated."
-
-# 18. Parar e remover container
+# 17. Parar e remover container
 Write-Log "Stopping and removing MySQL Docker container..."
 docker-compose down
 Write-Log "MySQL Docker container stopped and removed."
 
-# 19. Fim
+# 18. Fim
 Write-Log "MySQL integration test script completed successfully."
 exit 0 
