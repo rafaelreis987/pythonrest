@@ -95,6 +95,9 @@ Support for column names that contain unusual characters, like "-", " ", ".", "/
 "**Version 0.3.8**"
 * Consolidate mcp artifacts into a single h_MCP folder on generated API
 
+"**Version 0.3.9**"
+* Fix: Ensure /mcp/ask route works on AWS Lambda by correcting environment variable and model initialization handling.
+
 
 ## Installation
 
