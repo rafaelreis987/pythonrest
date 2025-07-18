@@ -2,7 +2,7 @@ import json
 import os
 from shutil import copytree
 from apigenerator.g_Utils.OpenFileExeHandler import open
-from apigenerator.resources.e_Infra.g_Environment.Encryption import Encryption
+from ..resources.e_Infra.g_Environment.Encryption import Encryption
 
 
 def install_environment_variables(result, us_datetime, db, db_params, script_absolute_path, uid_type, db_secure_connection_params=None):
@@ -10,6 +10,8 @@ def install_environment_variables(result, us_datetime, db, db_params, script_abs
     print('Adding Environment Variables to API')
     copytree(os.path.join(script_absolute_path, 'apigenerator/resources/3 - Variables/EnvironmentVariablesFile'),
              os.path.join(result, 'src', 'e_Infra', 'g_Environment'), dirs_exist_ok=True)
+    copy(os.path.join(script_absolute_path, 'apigenerator/resources/3 - Variables/EnvironmentVariablesFile/Encryption.py'),
+         os.path.join(result, 'src', 'e_Infra', 'g_Environment'))
 
     key = os.urandom(32)
     encryption = Encryption(key)
