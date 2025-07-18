@@ -1,6 +1,6 @@
 import json
 import os
-from shutil import copytree
+from shutil import copytree, copy
 from apigenerator.g_Utils.OpenFileExeHandler import open
 import base64
 from cryptography.hazmat.primitives.ciphers import (
@@ -23,8 +23,10 @@ class Encryption:
 def install_environment_variables(result, us_datetime, db, db_params, script_absolute_path, uid_type, db_secure_connection_params=None):
     # Installs and configures environment variables in environment variables file.
     print('Adding Environment Variables to API')
-    copytree(os.path.join(script_absolute_path, 'apigenerator/resources/1 - Project/1 - BaseProject/src/e_Infra/g_Environment'),
+    copytree(os.path.join(script_absolute_path, 'apigenerator/resources/3 - Variables/EnvironmentVariablesFile'),
              os.path.join(result, 'src', 'e_Infra', 'g_Environment'), dirs_exist_ok=True)
+    copy(os.path.join(script_absolute_path, 'apigenerator/resources/1 - Project/1 - BaseProject/src/e_Infra/g_Environment/Encryption.py'),
+         os.path.join(result, 'src', 'e_Infra', 'g_Environment'))
 
     key = os.urandom(32)
     encryption = Encryption(key)
