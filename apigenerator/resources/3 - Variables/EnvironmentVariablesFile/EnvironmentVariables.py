@@ -15,18 +15,7 @@ os.environ['CYPHER_TEXT'] = ''
 
 # ------------------------------------------ Decryption ------------------------------------------ #
 
-def decrypt_environ():
-    if 'CYPHER_TEXT' in os.environ and os.environ['CYPHER_TEXT']:
-        key = bytes.fromhex(os.environ['CYPHER_TEXT'])
-        encryption = Encryption(key)
-        for k, v in list(os.environ.items()):
-            if k not in ['CYPHER_TEXT']:
-                try:
-                    os.environ[k] = encryption.decrypt(v).decode()
-                except:
-                    pass
-        if 'CYPHER_TEXT' in os.environ:
-            del os.environ['CYPHER_TEXT']
+from Encryption import decrypt_environ
 
 decrypt_environ()
 
