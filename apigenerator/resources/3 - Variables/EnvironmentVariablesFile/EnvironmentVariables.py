@@ -15,16 +15,19 @@ os.environ['CYPHER_TEXT'] = ''
 
 # ------------------------------------------ Decryption ------------------------------------------ #
 
-if 'CYPHER_TEXT' in os.environ and os.environ['CYPHER_TEXT']:
-    key = bytes.fromhex(os.environ['CYPHER_TEXT'])
-    encryption = Encryption(key)
-    for k, v in os.environ.items():
-        if k not in ['CYPHER_TEXT']:
-            try:
-                os.environ[k] = encryption.decrypt(v).decode()
-            except:
-                pass
-    del os.environ['CYPHER_TEXT']
+def decrypt_environ():
+    if 'CYPHER_TEXT' in os.environ and os.environ['CYPHER_TEXT']:
+        key = bytes.fromhex(os.environ['CYPHER_TEXT'])
+        encryption = Encryption(key)
+        for k, v in os.environ.items():
+            if k not in ['CYPHER_TEXT']:
+                try:
+                    os.environ[k] = encryption.decrypt(v).decode()
+                except:
+                    pass
+        del os.environ['CYPHER_TEXT']
+
+decrypt_environ()
 
 # ------------------------------------------ Domain ------------------------------------------ #
 
