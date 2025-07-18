@@ -29,9 +29,12 @@ def install_environment_variables(result, us_datetime, db, db_params, script_abs
     key = os.urandom(32)
     encryption = Encryption(key)
 
-    with open(os.path.join(result, 'src', 'e_Infra', 'g_Environment', 'EnvironmentVariables.py'), 'r') as env_in:
+    env_file_path = os.path.join(result, 'src', 'e_Infra', 'g_Environment', 'EnvironmentVariables.py')
+
+    with open(env_file_path, 'r') as env_in:
         content = env_in.readlines()
-    with open(os.path.join(result, 'src', 'e_Infra', 'g_Environment', 'EnvironmentVariables.py'), 'w') as env_out:
+
+    with open(env_file_path, 'w') as env_out:
         for line in content:
             if "os.environ['CYPHER_TEXT']" in line:
                 line = "os.environ['CYPHER_TEXT'] = '{}'\n".format(key.hex())
@@ -43,16 +46,16 @@ def install_environment_variables(result, us_datetime, db, db_params, script_abs
 
             if '# Configuration for database connection #' in line:
                 append_line = ''
-                for key in db_params:
-                    encrypted_param = encryption.encrypt(db_params[key].encode())
-                    append_line = append_line + "os.environ['{}'] = '{}'\n".format(key, encrypted_param)
+                for key_param in db_params:
+                    encrypted_param = encryption.encrypt(db_params[key_param].encode())
+                    append_line = append_line + "os.environ['{}'] = '{}'\n".format(key_param, encrypted_param)
                 line = line + append_line
 
                 if db_secure_connection_params:
                     append_line = ''
-                    for key in db_secure_connection_params:
-                        encrypted_param = encryption.encrypt(db_secure_connection_params[key].encode())
-                        append_line = append_line + "os.environ['{}'] = '{}'\n".format(key, encrypted_param)
+                    for key_param in db_secure_connection_params:
+                        encrypted_param = encryption.encrypt(db_secure_connection_params[key_param].encode())
+                        append_line = append_line + "os.environ['{}'] = '{}'\n".format(key_param, encrypted_param)
                     line = line + append_line
 
             if '# UID Generation Type #' in line:
