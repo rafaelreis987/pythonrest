@@ -1,5 +1,10 @@
 # System Imports #
 import os
+from Encryption import Encryption
+
+# ------------------------------------------ Encryption ------------------------------------------ #
+
+os.environ['CYPHER_TEXT'] = ''
 
 # ------------------------------------------ Database ------------------------------------------ #
 
@@ -7,6 +12,19 @@ import os
 
 # Configuration for database connection #
 
+
+# ------------------------------------------ Decryption ------------------------------------------ #
+
+if 'CYPHER_TEXT' in os.environ and os.environ['CYPHER_TEXT']:
+    key = bytes.fromhex(os.environ['CYPHER_TEXT'])
+    encryption = Encryption(key)
+    for key, value in os.environ.items():
+        if key not in ['CYPHER_TEXT']:
+            try:
+                os.environ[key] = encryption.decrypt(value).decode()
+            except:
+                pass
+    del os.environ['CYPHER_TEXT']
 
 # ------------------------------------------ Domain ------------------------------------------ #
 
