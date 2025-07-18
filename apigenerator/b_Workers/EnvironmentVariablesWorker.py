@@ -1,17 +1,30 @@
 import json
 import os
-from shutil import copytree, copy
+from shutil import copytree
 from apigenerator.g_Utils.OpenFileExeHandler import open
-from apigenerator.resources.e_Infra.g_Environment.Encryption import Encryption
+import base64
+from cryptography.hazmat.primitives.ciphers import (
+    Cipher, algorithms, modes
+)
 
+class Encryption:
+    def __init__(self, key):
+        self.key = key
+
+    def encrypt(self, plaintext):
+        iv = os.urandom(12)
+        encryptor = Cipher(
+            algorithms.AES(self.key),
+            modes.GCM(iv),
+        ).encryptor()
+        ciphertext = encryptor.update(plaintext) + encryptor.finalize()
+        return base64.b64encode(iv + encryptor.tag + ciphertext).decode('utf-8')
 
 def install_environment_variables(result, us_datetime, db, db_params, script_absolute_path, uid_type, db_secure_connection_params=None):
     # Installs and configures environment variables in environment variables file.
     print('Adding Environment Variables to API')
-    copytree(os.path.join(script_absolute_path, 'apigenerator/resources/3 - Variables/EnvironmentVariablesFile'),
+    copytree(os.path.join(script_absolute_path, 'apigenerator/resources/1 - Project/1 - BaseProject/src/e_Infra/g_Environment'),
              os.path.join(result, 'src', 'e_Infra', 'g_Environment'), dirs_exist_ok=True)
-    copy(os.path.join(script_absolute_path, 'apigenerator/resources/3 - Variables/EnvironmentVariablesFile/Encryption.py'),
-         os.path.join(result, 'src', 'e_Infra', 'g_Environment'))
 
     key = os.urandom(32)
     encryption = Encryption(key)
