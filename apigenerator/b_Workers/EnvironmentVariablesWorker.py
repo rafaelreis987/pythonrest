@@ -1,8 +1,8 @@
 import json
 import os
-from shutil import copytree
+from shutil import copytree, copy
 from apigenerator.g_Utils.OpenFileExeHandler import open
-from ..resources.e_Infra.g_Environment.Encryption import Encryption
+from apigenerator.resources.e_Infra.g_Environment.Encryption import Encryption
 
 
 def install_environment_variables(result, us_datetime, db, db_params, script_absolute_path, uid_type, db_secure_connection_params=None):
