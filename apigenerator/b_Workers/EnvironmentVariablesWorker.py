@@ -42,26 +42,26 @@ def install_environment_variables(result, us_datetime, db, db_params, script_abs
                 line = "os.environ['CYPHER_TEXT'] = '{}'\n".format(key.hex())
 
             if '# Database start configuration #' in line:
-                encrypted_db = encryption.encrypt(db.encode())
+                encrypted_db = encryption.encrypt(str(db).encode())
                 append_line = "os.environ['main_db_conn'] = '{}'\n".format(encrypted_db)
                 line = line + append_line
 
             if '# Configuration for database connection #' in line:
                 append_line = ''
                 for key_param in db_params:
-                    encrypted_param = encryption.encrypt(db_params[key_param].encode())
+                    encrypted_param = encryption.encrypt(str(db_params[key_param]).encode())
                     append_line = append_line + "os.environ['{}'] = '{}'\n".format(key_param, encrypted_param)
                 line = line + append_line
 
                 if db_secure_connection_params:
                     append_line = ''
                     for key_param in db_secure_connection_params:
-                        encrypted_param = encryption.encrypt(db_secure_connection_params[key_param].encode())
+                        encrypted_param = encryption.encrypt(str(db_secure_connection_params[key_param]).encode())
                         append_line = append_line + "os.environ['{}'] = '{}'\n".format(key_param, encrypted_param)
                     line = line + append_line
 
             if '# UID Generation Type #' in line:
-                encrypted_uid_type = encryption.encrypt(uid_type.encode())
+                encrypted_uid_type = encryption.encrypt(str(uid_type).encode())
                 append_line = "os.environ['id_generation_method'] = '{}'\n".format(encrypted_uid_type)
                 line = line + append_line
 
