@@ -38,6 +38,8 @@ def install_environment_variables(result, us_datetime, db, db_params, script_abs
 
     with open(env_file_path, 'w') as env_out:
         for line in content:
+            if "from Encryption import Encryption" in line:
+                line = "from src.e_Infra.g_Environment.Encryption import Encryption, decrypt_environ\n"
             if "os.environ['CYPHER_TEXT']" in line:
                 line = "os.environ['CYPHER_TEXT'] = '{}'\n".format(key.hex())
 
