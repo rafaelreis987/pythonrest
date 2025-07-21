@@ -34,8 +34,55 @@ jobs:
     displayName: "Check commit message format"
 
   - script: |
+      sudo apt-get update
+      sudo apt-get install -y software-properties-common
+      sudo add-apt-repository ppa:deadsnakes/ppa -y
+      sudo apt-get update
+      sudo apt-get install -y python3.11 python3.11-venv python3.11-distutils
+      sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+      sudo apt-get install -y docker.io
+      sudo systemctl start docker
+      sudo systemctl enable docker
+      python3 --version
+      if ! python3 --version | grep -q '3.11'; then
+        echo 'Python 3.11 não está instalado corretamente!'; exit 1;
+      fi
+      docker --version
+      if ! docker info > /dev/null 2>&1; then
+        echo 'Docker não está rodando!'; exit 1;
+      fi
+    displayName: 'Install and verify Python 3.11 and Docker'
+
+  - script: |
       python3 -m venv venv
       source venv/bin/activate
       pip install --upgrade pip setuptools wheel
       python setup.py sdist
     displayName: 'Validate pip package build'
+
+  - script: |
+      python -m venv venv
+      source venv/bin/activate
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      pwsh -Command "& { ./tests/Databases/MySQL/test_mysql.ps1 }"
+      rm -rf PythonRestAPI
+    displayName: 'Test MySQL DB API creation'
+
+  - script: |
+      python -m venv venv
+      source venv/bin/activate
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      pwsh -Command "& { ./tests/Databases/PostgreSQL/test_postgresql.ps1 }"
+      rm -rf PythonRestAPI
+    displayName: 'Test PostgreSQL DB API creation'
+
+  - script: |
+      python -m venv venv
+      source venv/bin/activate
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      pwsh -Command "& { ./tests/Databases/SQLServer/test_sqlserver.ps1 }"
+      rm -rf PythonRestAPI
+    displayName: 'Test SQL Server DB API creation'
