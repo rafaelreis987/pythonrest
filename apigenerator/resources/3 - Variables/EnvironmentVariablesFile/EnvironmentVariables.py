@@ -13,9 +13,6 @@ os.environ['CYPHER_TEXT'] = ''
 # Configuration for database connection #
 
 
-# ------------------------------------------ Decryption ------------------------------------------ #
-
-decrypt_environ()
 
 # ------------------------------------------ Domain ------------------------------------------ #
 
@@ -72,3 +69,8 @@ ENV_DEFAULT_ANTHROPIC_MODEL_NAME = 'ANTHROPIC_MODEL'
 ENV_DEFAULT_GEMINI_TEMPERATURE = 'GEMINI_TEMPERATURE'
 ENV_DEFAULT_OPENAI_TEMPERATURE = 'OPENAI_TEMPERATURE'
 ENV_DEFAULT_ANTHROPIC_TEMPERATURE = 'ANTHROPIC_TEMPERATURE'
+
+
+# ------------------------------------------ Decryption ------------------------------------------ #
+
+decrypt_environ()

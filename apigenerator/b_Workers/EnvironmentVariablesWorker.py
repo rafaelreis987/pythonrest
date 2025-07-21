@@ -21,7 +21,6 @@ class Encryption:
         return base64.b64encode(iv + encryptor.tag + ciphertext).decode('utf-8')
 
 def install_environment_variables(result, us_datetime, db, db_params, script_absolute_path, uid_type, db_secure_connection_params=None):
-    # Installs and configures environment variables in environment variables file.
     print('Adding Environment Variables to API')
     copytree(os.path.join(script_absolute_path, 'apigenerator/resources/3 - Variables/EnvironmentVariablesFile'),
              os.path.join(result, 'src', 'e_Infra', 'g_Environment'), dirs_exist_ok=True)
@@ -36,8 +35,22 @@ def install_environment_variables(result, us_datetime, db, db_params, script_abs
     with open(env_file_path, 'r') as env_in:
         content = env_in.readlines()
 
+    updated_content = []
+    for line in content:
+        if "os.environ[" in line and "=" in line:
+            parts = line.split("=")
+            if len(parts) == 2:
+                left = parts[0].strip()
+                right = parts[1].strip()
+                if (right.startswith("'") and right.endswith("'")) or (right.startswith('"') and right.endswith('"')):
+                    original_value = right[1:-1]
+                    encrypted_value = encryption.encrypt(original_value.encode())
+                    quote = right[0]
+                    line = f"{left} = {quote}{encrypted_value}{quote}\n"
+        updated_content.append(line)
+
     with open(env_file_path, 'w') as env_out:
-        for line in content:
+        for line in updated_content:
             if "from Encryption import Encryption" in line:
                 line = "from src.e_Infra.g_Environment.Encryption import Encryption, decrypt_environ\n"
             if "os.environ['CYPHER_TEXT']" in line:
@@ -52,19 +65,19 @@ def install_environment_variables(result, us_datetime, db, db_params, script_abs
                 append_line = ''
                 for key_param in db_params:
                     encrypted_param = encryption.encrypt(str(db_params[key_param]).encode())
-                    append_line = append_line + "os.environ['{}'] = '{}'\n".format(key_param, encrypted_param)
+                    append_line = append_line + "os.environ['{}'] = '{} '\n".format(key_param, encrypted_param)
                 line = line + append_line
 
                 if db_secure_connection_params:
                     append_line = ''
                     for key_param in db_secure_connection_params:
                         encrypted_param = encryption.encrypt(str(db_secure_connection_params[key_param]).encode())
-                        append_line = append_line + "os.environ['{}'] = '{}'\n".format(key_param, encrypted_param)
+                        append_line = append_line + "os.environ['{}'] = '{} '\n".format(key_param, encrypted_param)
                     line = line + append_line
 
             if '# UID Generation Type #' in line:
                 encrypted_uid_type = encryption.encrypt(str(uid_type).encode())
-                append_line = "os.environ['id_generation_method'] = '{}'\n".format(encrypted_uid_type)
+                append_line = "os.environ['id_generation_method'] = '{} '\n".format(encrypted_uid_type)
                 line = line + append_line
 
             env_out.write(line)
