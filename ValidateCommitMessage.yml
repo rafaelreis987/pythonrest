@@ -86,3 +86,4 @@ jobs:
       pwsh -Command "& { ./tests/Databases/SQLServer/test_sqlserver.ps1 }"
       rm -rf PythonRestAPI
     displayName: 'Test SQL Server DB API creation'
+    
