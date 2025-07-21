@@ -98,6 +98,9 @@ Support for column names that contain unusual characters, like "-", " ", ".", "/
 "**Version 0.3.9**"
 * Improve AI model initialization for /mcp/ask.
 
+"**Version 0.4.0**"
+* Implementing encryption of environment variables.
+
 
 ## Installation
 

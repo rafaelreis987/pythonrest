@@ -33,7 +33,7 @@ def list_files_by_extension(directory='.', extension=()):
 
 setup(
     name='pythonrest3',
-    version='0.3.9',
+    version='0.4.0',
     description='A CLI tool that generates a complete API using a connection string for supported databases: mysql, mssql, mariadb and postgres',
     long_description=(
         "# PythonREST\n\n"
@@ -90,7 +90,9 @@ setup(
         "**Version 0.3.8**\n"
         "* Consolidate mcp artifacts into a single h_MCP folder on generated API.\n\n"
         "**Version 0.3.9**\n"
-        "* Improve AI model initialization for /mcp/ask.\n"
+        "* Improve AI model initialization for /mcp/ask.\n\n"
+        "**Version 0.4.0**\n"
+        "* Implementing encryption of environment variables.\n"
     ),
     long_description_content_type="text/markdown",
     author='Seven Technologies Cloud',
