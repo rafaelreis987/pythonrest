@@ -40,7 +40,15 @@ jobs:
       sudo apt-get update
       sudo apt-get install -y python3.11 python3.11-venv python3.11-distutils
       sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
-      sudo apt-get install -y docker.io
+      sudo apt-get install -y docker.io docker-compose-plugin
+      # Garante que o comando docker-compose funcione (compatível com diferentes distros)
+      if [ ! -e /usr/local/bin/docker-compose ]; then
+        if [ -e /usr/libexec/docker/cli-plugins/docker-compose ]; then
+          sudo ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+        elif [ -e /usr/lib/docker/cli-plugins/docker-compose ]; then
+          sudo ln -s /usr/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+        fi
+      fi
       sudo systemctl start docker
       sudo systemctl enable docker
       python3 --version
@@ -48,6 +56,7 @@ jobs:
         echo 'Python 3.11 não está instalado corretamente!'; exit 1;
       fi
       docker --version
+      docker-compose version
       if ! docker info > /dev/null 2>&1; then
         echo 'Docker não está rodando!'; exit 1;
       fi
