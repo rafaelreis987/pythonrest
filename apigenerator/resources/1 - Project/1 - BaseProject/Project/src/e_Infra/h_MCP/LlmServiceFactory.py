@@ -1,9 +1,7 @@
 import logging
+import os
 from src.e_Infra.CustomVariables import (
-    ENV_DEFAULT_LLM_PROVIDER,
-    GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY,
-    ENV_DEFAULT_GEMINI_MODEL_NAME, ENV_DEFAULT_OPENAI_MODEL_NAME, ENV_DEFAULT_ANTHROPIC_MODEL_NAME,
-    ENV_DEFAULT_GEMINI_TEMPERATURE, ENV_DEFAULT_OPENAI_TEMPERATURE, ENV_DEFAULT_ANTHROPIC_TEMPERATURE
+    GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY
 )
 from src.e_Infra.h_MCP.LlmConfigManager import LlmConfigManager
 from src.e_Infra.h_MCP.GeminiService import GeminiService
@@ -50,8 +48,8 @@ class LlmServiceFactory:
             if runtime_default_provider:
                 chosen_provider_name = runtime_default_provider.lower()
                 source_of_provider_choice = "runtime_config (llm_config.json)"
-            elif ENV_DEFAULT_LLM_PROVIDER:
-                chosen_provider_name = ENV_DEFAULT_LLM_PROVIDER.lower()
+            elif os.environ.get('ENV_DEFAULT_LLM_PROVIDER'):
+                chosen_provider_name = os.environ.get('ENV_DEFAULT_LLM_PROVIDER').lower()
                 source_of_provider_choice = "environment (ENV_DEFAULT_LLM_PROVIDER)"
 
         if not chosen_provider_name:
@@ -79,9 +77,9 @@ class LlmServiceFactory:
         temperature_str = provider_runtime_settings.get("temperature") # Stored as string/float in JSON potentially
 
         if not model_name: # Fallback to environment default model name
-            if chosen_provider_name == "gemini": model_name = ENV_DEFAULT_GEMINI_MODEL_NAME
-            elif chosen_provider_name == "openai": model_name = ENV_DEFAULT_OPENAI_MODEL_NAME
-            elif chosen_provider_name == "anthropic": model_name = ENV_DEFAULT_ANTHROPIC_MODEL_NAME
+            if chosen_provider_name == "gemini": model_name = os.environ.get('ENV_DEFAULT_GEMINI_MODEL_NAME')
+            elif chosen_provider_name == "openai": model_name = os.environ.get('ENV_DEFAULT_OPENAI_MODEL_NAME')
+            elif chosen_provider_name == "anthropic": model_name = os.environ.get('ENV_DEFAULT_ANTHROPIC_MODEL_NAME')
 
         temperature = None
         if temperature_str is not None: # If runtime config has temperature
@@ -93,9 +91,9 @@ class LlmServiceFactory:
 
         if temperature is None: # Fallback to environment default temperature if runtime was missing or invalid
             env_temp_str = None
-            if chosen_provider_name == "gemini": env_temp_str = ENV_DEFAULT_GEMINI_TEMPERATURE
-            elif chosen_provider_name == "openai": env_temp_str = ENV_DEFAULT_OPENAI_TEMPERATURE
-            elif chosen_provider_name == "anthropic": env_temp_str = ENV_DEFAULT_ANTHROPIC_TEMPERATURE
+            if chosen_provider_name == "gemini": env_temp_str = os.environ.get('ENV_DEFAULT_GEMINI_TEMPERATURE')
+            elif chosen_provider_name == "openai": env_temp_str = os.environ.get('ENV_DEFAULT_OPENAI_TEMPERATURE')
+            elif chosen_provider_name == "anthropic": env_temp_str = os.environ.get('ENV_DEFAULT_ANTHROPIC_TEMPERATURE')
 
             if env_temp_str is not None:
                 try:
