@@ -36,48 +36,57 @@ jobs:
       }
     displayName: "Check commit message format"
 
-  - script: |
+  - powershell: |
+      Write-Host "Installing Docker Desktop..."
+      choco install docker-desktop -y --force
+      
+      Write-Host "Adding Docker tools to PATH..."
+      $dockerPath = "C:\Program Files\Docker\Docker\resources\bin"
+      $env:PATH = "$dockerPath;" + $env:PATH
+      
+      Write-Host "Starting Docker service and waiting for it to be ready..."
+      Start-Service -Name "com.docker.service"
+      $timeout = 180; $elapsed = 0
+      while (-not (docker info 2>$null)) {
+        if ($elapsed -ge $timeout) { throw "Docker daemon did not start within $timeout seconds." }
+        Start-Sleep -Seconds 5
+        $elapsed += 5
+        Write-Host "Still waiting for Docker... ($elapsed s)"
+      }
+      
+      Write-Host "Docker is running."
       python --version
-      choco install docker-desktop -y
       docker --version
-      docker-compose version
-      net start com.docker.service
-      if not docker info >nul 2>&1; then
-        echo 'Docker is not running!'; exit 1;
-      fi
+      docker-compose --version
     displayName: 'Install and verify Python 3.11 and Docker'
 
-  - script: |
+  - powershell: |
       python -m venv venv
-      venv\Scripts\activate
-      pip install --upgrade pip setuptools wheel
-      python setup.py sdist
+      .\venv\Scripts\pip.exe install --upgrade pip setuptools wheel
+      .\venv\Scripts\python.exe setup.py sdist
     displayName: 'Validate pip package build'
 
-  - script: |
+  - powershell: |
       python -m venv venv
-      venv\Scripts\activate
-      pip install --upgrade pip
-      pip install -r requirements.txt
+      .\venv\Scripts\pip.exe install --upgrade pip
+      .\venv\Scripts\pip.exe install -r requirements.txt
       pwsh -Command "& { ./tests/Databases/MySQL/test_mysql.ps1 }"
-      rmdir /S /Q PythonRestAPI
+      if (Test-Path -Path "PythonRestAPI") { Remove-Item -Recurse -Force "PythonRestAPI" }
     displayName: 'Test MySQL DB API creation'
 
-  - script: |
+  - powershell: |
       python -m venv venv
-      venv\Scripts\activate
-      pip install --upgrade pip
-      pip install -r requirements.txt
+      .\venv\Scripts\pip.exe install --upgrade pip
+      .\venv\Scripts\pip.exe install -r requirements.txt
       pwsh -Command "& { ./tests/Databases/PostgreSQL/test_postgresql.ps1 }"
-      rmdir /S /Q PythonRestAPI
+      if (Test-Path -Path "PythonRestAPI") { Remove-Item -Recurse -Force "PythonRestAPI" }
     displayName: 'Test PostgreSQL DB API creation'
 
-  - script: |
+  - powershell: |
       python -m venv venv
-      venv\Scripts\activate
-      pip install --upgrade pip
-      pip install -r requirements.txt
+      .\venv\Scripts\pip.exe install --upgrade pip
+      .\venv\Scripts\pip.exe install -r requirements.txt
       pwsh -Command "& { ./tests/Databases/SQLServer/test_sqlserver.ps1 }"
-      rmdir /S /Q PythonRestAPI
+      if (Test-Path -Path "PythonRestAPI") { Remove-Item -Recurse -Force "PythonRestAPI" }
     displayName: 'Test SQL Server DB API creation'
     
