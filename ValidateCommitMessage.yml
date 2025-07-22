@@ -12,90 +12,86 @@ variables:
 
 jobs:
 - job: ValidateCommitMessage
-  displayName: Validate commit message
+  displayName: Validate pythonrest package
   pool:
     vmImage: ubuntu-latest
   steps:
   - checkout: self
-
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.11'
-      addToPath: true
-    displayName: 'Set up Python 3.11'
-
-  - powershell: |
+  - script: |
+      # Ensure we have full commit history in the CI environment
       git fetch --all --unshallow
-      $last_commit_message = git log -1 --pretty=%s $(git rev-list --no-merges -n 1 HEAD)
-      if ($last_commit_message -match 'version\s?[0-9]+\.[0-9]+\.[0-9]+') {
-        Write-Host "Commit message contains a valid version format: $last_commit_message"
-      } else {
-        Write-Host "Error: The commit message does not contain a valid version format (versionX.X.X)."
-        Write-Host "Last commit message: $last_commit_message"
+
+      # Find the last non-merge commit before the merge commit (PR source commit)
+      last_commit_message=$(git log -1 --pretty=%s $(git rev-list --no-merges -n 1 HEAD))
+
+      if [[ $last_commit_message =~ version\ ?[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+        echo "Commit message contains a valid version format: $last_commit_message"
+      else
+        echo "Error: The commit message does not contain a valid version format (versionX.X.X)."
+        echo "Last commit message: $last_commit_message"
         exit 1
-      }
+      fi
     displayName: "Check commit message format"
 
-  - bash: |
-      echo "Installing PowerShell Core..."
-      wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
-      sudo dpkg -i packages-microsoft-prod.deb
+  - script: |
       sudo apt-get update
-      sudo apt-get install -y powershell
-      
-      echo "Verifying installations..."
-      docker --version
-      docker compose --version
-      python --version
-      bash  --version
-      
-      echo "Starting Docker service..."
+      sudo apt-get install -y software-properties-common
+      sudo add-apt-repository ppa:deadsnakes/ppa -y
+      sudo apt-get update
+      sudo apt-get install -y python3.11 python3.11-venv python3.11-distutils
+      sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+      sudo apt-get install -y docker.io docker-compose-plugin
+      # Garante que o comando docker-compose funcione (compatível com diferentes distros)
+      if [ ! -e /usr/local/bin/docker-compose ]; then
+        if [ -e /usr/libexec/docker/cli-plugins/docker-compose ]; then
+          sudo ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+        elif [ -e /usr/lib/docker/cli-plugins/docker-compose ]; then
+          sudo ln -s /usr/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+        fi
+      fi
       sudo systemctl start docker
       sudo systemctl enable docker
-      
-      echo "Waiting for Docker to be ready..."
-      timeout=60
-      elapsed=0
-      while ! docker info >/dev/null 2>&1; do
-        if [ $elapsed -ge $timeout ]; then
-          echo "Docker daemon did not start within $timeout seconds."
-          exit 1
-        fi
-        sleep 2
-        elapsed=$((elapsed + 2))
-        echo "Still waiting for Docker... ($elapsed s)"
-      done
-      
-      echo "Docker is running."
-    displayName: 'Install PowerShell and verify Docker'
+      python3 --version
+      if ! python3 --version | grep -q '3.11'; then
+        echo 'Python 3.11 não está instalado corretamente!'; exit 1;
+      fi
+      docker --version
+      docker-compose version
+      if ! docker info > /dev/null 2>&1; then
+        echo 'Docker não está rodando!'; exit 1;
+      fi
+    displayName: 'Install and verify Python 3.11 and Docker'
 
-  - bash: |
-      python -m venv venv
-      ./venv/bin/pip install --upgrade pip setuptools wheel
-      ./venv/bin/python setup.py sdist
+  - script: |
+      python3 -m venv venv
+      source venv/bin/activate
+      pip install --upgrade pip setuptools wheel
+      python setup.py sdist
     displayName: 'Validate pip package build'
 
-  - bash: |
+  - script: |
       python -m venv venv
-      ./venv/bin/pip install --upgrade pip
-      ./venv/bin/pip install -r requirements.txt
+      source venv/bin/activate
+      pip install --upgrade pip
+      pip install -r requirements.txt
       bash  ./tests/Databases/MySQL/test_mysql.sh
       if [ -d "PythonRestAPI" ]; then rm -rf "PythonRestAPI"; fi
     displayName: 'Test MySQL DB API creation'
 
-  - bash: |
+  - script: |
       python -m venv venv
-      ./venv/bin/pip install --upgrade pip
-      ./venv/bin/pip install -r requirements.txt
+      source venv/bin/activate
+      pip install --upgrade pip
+      pip install -r requirements.txt
       bash  ./tests/Databases/PostgreSQL/test_postgresql.sh
       if [ -d "PythonRestAPI" ]; then rm -rf "PythonRestAPI"; fi
     displayName: 'Test PostgreSQL DB API creation'
 
-  - bash: |
+  - script: |
       python -m venv venv
-      ./venv/bin/pip install --upgrade pip
-      ./venv/bin/pip install -r requirements.txt
+      source venv/bin/activate
+      pip install --upgrade pip
+      pip install -r requirements.txt
       bash  ./tests/Databases/SQLServer/test_sqlserver.sh
       if [ -d "PythonRestAPI" ]; then rm -rf "PythonRestAPI"; fi
     displayName: 'Test SQL Server DB API creation'
-    
