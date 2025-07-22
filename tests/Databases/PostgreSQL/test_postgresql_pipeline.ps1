@@ -104,13 +104,13 @@ if ($LASTEXITCODE -ne 0) {
 Write-Log "Dependencies installed successfully."
 
 # Start Flask API in background
-$API_LOG = "/tmp/api_output_postgres.log"
-$API_ERR = "/tmp/api_error_postgres.log"
+$API_LOG_OUT = "/tmp/api_postgres_out.log"
+$API_LOG_ERR = "/tmp/api_postgres_err.log"
 
 Write-Log "Starting Flask API..."
 $API_PROCESS = Start-Process $API_PYTHON -ArgumentList "app.py" `
-    -RedirectStandardOutput $API_LOG `
-    -RedirectStandardError $API_ERR `
+    -RedirectStandardOutput $API_LOG_OUT `
+    -RedirectStandardError $API_LOG_ERR `
     -PassThru
 Write-Log "Flask API started with PID $($API_PROCESS.Id)."
 

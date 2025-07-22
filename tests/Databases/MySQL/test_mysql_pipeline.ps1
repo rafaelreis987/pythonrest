@@ -150,13 +150,15 @@ if ($IsWindows) {
 }
 
 Write-Log "Starting generated API..."
-$API_LOG = "$env:TEMP\api_mysql_out.log"
-$API_ERR = "$env:TEMP\api_mysql_err.log"
+$API_LOG_OUT = "/tmp/api_mysql_out.log"
+$API_LOG_ERR = "/tmp/api_mysql_err.log"
 
+Write-Log "Starting generated API..."
 $API_PROCESS = Start-Process $API_VENV_PYTHON -ArgumentList "app.py" `
-    -RedirectStandardOutput $API_LOG `
-    -RedirectStandardError $API_ERR `
+    -RedirectStandardOutput $API_LOG_OUT `
+    -RedirectStandardError $API_LOG_ERR `
     -PassThru
+
 
 
 Start-Sleep -Seconds 5
