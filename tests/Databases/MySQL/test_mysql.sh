@@ -26,7 +26,7 @@ cleanup() {
         write_log "PythonREST virtual environment deactivated."
         PYTHONREST_VENV_ACTIVATED="false"
     fi
-    docker-compose down || true
+    docker compose down || true
 }
 trap cleanup EXIT
 
@@ -37,8 +37,8 @@ write_log "Starting MySQL integration test script."
 write_log "Starting MySQL Docker container..."
 cd "$SCRIPT_DIR"
 write_log "Changed directory to script location for Docker operations: $(pwd)"
-docker-compose down --remove-orphans
-docker-compose up -d
+docker compose down --remove-orphans
+docker compose up -d
 
 write_log "MySQL Docker container started."
 
@@ -65,12 +65,12 @@ while true; do
         if [[ $retry_count -lt $MAX_RETRIES ]]; then
             retry_count=$((retry_count + 1))
             write_log "Timeout reached. Restarting container (Attempt $retry_count of $MAX_RETRIES)..."
-            docker-compose restart
+            docker compose restart
             SECONDS_WAITED=0
             continue
         else
             write_log "ERROR: MySQL container failed to become ready after $MAX_RETRIES attempts."
-            docker-compose logs
+            docker compose logs
             docker inspect "$MYSQL_CONTAINER_NAME"
             exit 1
         fi
@@ -179,7 +179,7 @@ write_log "Changed directory to $(pwd)."
 
 # 18. Parar e remover container
 write_log "Stopping and removing MySQL Docker container..."
-docker-compose down
+docker compose down
 write_log "MySQL Docker container stopped and removed."
 
 # 19. Fim

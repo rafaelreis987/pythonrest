@@ -38,11 +38,11 @@ write_log "Starting SQL Server integration test script."
 write_log "Starting SQL Server Docker container..."
 cd "$SCRIPT_DIR"
 write_log "Changed directory to script location for Docker operations: $(pwd)"
-docker-compose down --remove-orphans
-docker-compose up -d || {
+docker compose down --remove-orphans
+docker compose up -d || {
   write_log "ERROR: Failed to start SQL Server Docker container."
   write_log "Checking docker-compose logs:"
-  docker-compose logs
+  docker compose logs
   exit 1
 }
 write_log "SQL Server Docker container started."
@@ -70,7 +70,7 @@ while true; do
   if [[ $SECONDS_WAITED -ge $TIMEOUT_SECONDS ]]; then
     if [[ $retry_count -lt $MAX_RETRIES ]]; then
       write_log "Timeout reached. Attempting to restart container (Attempt $((retry_count + 1)) of $MAX_RETRIES)..."
-      docker-compose restart
+      docker compose restart
       SECONDS_WAITED=0
       ((retry_count++))
       continue
@@ -78,10 +78,10 @@ while true; do
 
     write_log "ERROR: SQL Server container failed to become ready after $MAX_RETRIES attempts."
     write_log "Container logs:"
-    docker-compose logs
+    docker compose logs
     write_log "Container details:"
     docker inspect "$SQLSERVER_CONTAINER_NAME"
-    docker-compose down
+    docker compose down
     exit 1
   fi
 
@@ -99,7 +99,7 @@ SQLCMD_LOG="/tmp/sqlcmd_output_sqlserver.log"
 docker exec "$SQLSERVER_CONTAINER_NAME" /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P '24ad0a77-c59b-4479-b508-72b83615f8ed' -d master -i /docker-entrypoint-initdb.d/database_mapper_sqlserver.sql > "$SQLCMD_LOG" 2>&1 || {
   write_log "ERROR: Failed to execute SQL script. See $SQLCMD_LOG for details."
   cat "$SQLCMD_LOG"
-  docker-compose down
+  docker compose down
   exit 1
 }
 write_log "SQL script executed successfully. Output logged to $SQLCMD_LOG."
@@ -110,7 +110,7 @@ VENV_ACTIVATE="$PROJECT_ROOT/venv/bin/activate"
 write_log "Activating shared PythonREST virtual environment: $VENV_ACTIVATE"
 if [[ ! -f "$VENV_ACTIVATE" ]]; then
   write_log "ERROR: PythonREST venv activate script not found at $VENV_ACTIVATE"
-  docker-compose down
+  docker compose down
   exit 1
 fi
 # shellcheck disable=SC1090
@@ -126,7 +126,7 @@ write_log "Changed directory to project root for PythonREST generation: $(pwd)"
 python "$PROJECT_ROOT/pythonrest.py" generate --sqlserver-connection-string "mssql://sa:24ad0a77-c59b-4479-b508-72b83615f8ed@localhost:1433/database_mapper_sqlserver" || {
   write_log "ERROR: PythonREST generation failed."
   cd "$SCRIPT_DIR"
-  docker-compose down
+  docker compose down
   exit 1
 }
 
@@ -138,7 +138,7 @@ write_log "Checking for generated API at: $GENERATED_API_PATH"
 if [[ ! -d "$GENERATED_API_PATH" ]]; then
   write_log "ERROR: 'PythonRestAPI' folder not found at $GENERATED_API_PATH after PythonREST generation."
   cd "$SCRIPT_DIR"
-  docker-compose down
+  docker compose down
   exit 1
 fi
 write_log "PythonREST generation successful. 'PythonRestAPI' folder found at $GENERATED_API_PATH."
@@ -152,7 +152,7 @@ write_log "Creating Python virtual environment for generated API..."
 python -m venv venv || {
   write_log "ERROR: Failed to create Python virtual environment for generated API."
   cd "$SCRIPT_DIR"
-  docker-compose down
+  docker compose down
   exit 1
 }
 write_log "Python virtual environment for generated API created."
@@ -203,7 +203,7 @@ else
     deactivate
     write_log "Virtual environment for generated API deactivated."
     cd "$SCRIPT_DIR"
-    docker-compose down
+    docker compose down
     exit 1
   fi
 fi
@@ -239,7 +239,7 @@ write_log "Shared PythonREST virtual environment deactivated."
 
 # 18. Parar e remover container
 write_log "Stopping and removing SQL Server Docker container..."
-docker-compose down
+docker compose down
 write_log "SQL Server Docker container stopped and removed."
 
 # 19. Fim

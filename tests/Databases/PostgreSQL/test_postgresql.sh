@@ -39,8 +39,8 @@ write_log "Starting PostgreSQL Docker container..."
 cd "$SCRIPT_DIR"
 write_log "Changed directory to script location for Docker operations: $(pwd)"
 
-docker-compose down --remove-orphans
-docker-compose up -d
+docker compose down --remove-orphans
+docker compose up -d
 
 write_log "PostgreSQL Docker container started."
 
@@ -55,7 +55,7 @@ VENV_ACTIVATE="$PROJECT_ROOT/venv/bin/activate"
 write_log "Activating shared PythonREST virtual environment: $VENV_ACTIVATE"
 if [[ ! -f "$VENV_ACTIVATE" ]]; then
     write_log "ERROR: PythonREST venv activate script not found at $VENV_ACTIVATE"
-    docker-compose down
+    docker compose down
     exit 1
 fi
 
@@ -79,7 +79,7 @@ write_log "Checking for generated API at: $GENERATED_API_PATH"
 
 if [[ ! -d "$GENERATED_API_PATH" ]]; then
     write_log "ERROR: 'PythonRestAPI' folder not found at $GENERATED_API_PATH after PythonREST generation."
-    docker-compose down
+    docker compose down
     exit 1
 fi
 
@@ -132,7 +132,7 @@ else
     cat "$API_LOG_ERROR"
     kill "$API_PID"
     deactivate
-    docker-compose down
+    docker compose down
     exit 1
 fi
 
@@ -166,7 +166,7 @@ write_log "Shared PythonREST virtual environment deactivated."
 
 # 18. Parar e remover container
 write_log "Stopping and removing PostgreSQL Docker container..."
-docker-compose down
+docker compose down
 write_log "PostgreSQL Docker container stopped and removed."
 
 # 19. Fim
