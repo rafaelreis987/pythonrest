@@ -105,9 +105,15 @@ Write-Log "Dependencies installed successfully."
 
 # Start Flask API in background
 $API_LOG = "/tmp/api_output_postgres.log"
+$API_ERR = "/tmp/api_error_postgres.log"
+
 Write-Log "Starting Flask API..."
-$API_PROCESS = Start-Process $API_PYTHON -ArgumentList "app.py" -RedirectStandardOutput $API_LOG -RedirectStandardError $API_LOG -PassThru
+$API_PROCESS = Start-Process $API_PYTHON -ArgumentList "app.py" `
+    -RedirectStandardOutput $API_LOG `
+    -RedirectStandardError $API_ERR `
+    -PassThru
 Write-Log "Flask API started with PID $($API_PROCESS.Id)."
+
 
 # Wait for API
 Write-Log "Waiting for API to start..."

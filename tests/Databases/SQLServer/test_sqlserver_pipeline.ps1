@@ -201,11 +201,15 @@ if ($LASTEXITCODE -ne 0) {
 # ---------------------------------------------
 $API_LOG = "/tmp/api_sqlserver.log"
 
+$API_LOG = "$env:TEMP\api_sqlserver.log"
+$API_ERR = "$env:TEMP\api_sqlserver_err.log"
+
 Write-Log "Iniciando API Flask..."
 $API_PROCESS = Start-Process python -ArgumentList "app.py" `
     -RedirectStandardOutput $API_LOG `
-    -RedirectStandardError $API_LOG `
+    -RedirectStandardError $API_ERR `
     -PassThru
+
 
 Start-Sleep -Seconds 5
 
