@@ -79,7 +79,7 @@ jobs:
       python -m venv venv
       ./venv/bin/pip install --upgrade pip
       ./venv/bin/pip install -r requirements.txt
-      pwsh ./tests/Databases/MySQL/test_mysql_pipeline.ps1
+      pwsh ./tests/Databases/MySQL/test_mysql.sh
       if [ -d "PythonRestAPI" ]; then rm -rf "PythonRestAPI"; fi
     displayName: 'Test MySQL DB API creation'
 
@@ -87,7 +87,7 @@ jobs:
       python -m venv venv
       ./venv/bin/pip install --upgrade pip
       ./venv/bin/pip install -r requirements.txt
-      pwsh ./tests/Databases/PostgreSQL/test_postgresql_pipeline.ps1
+      pwsh ./tests/Databases/PostgreSQL/test_postgresql.sh
       if [ -d "PythonRestAPI" ]; then rm -rf "PythonRestAPI"; fi
     displayName: 'Test PostgreSQL DB API creation'
 
@@ -95,7 +95,7 @@ jobs:
       python -m venv venv
       ./venv/bin/pip install --upgrade pip
       ./venv/bin/pip install -r requirements.txt
-      pwsh ./tests/Databases/SQLServer/test_sqlserver_pipeline.ps1
+      pwsh ./tests/Databases/SQLServer/test_sqlserver.sh
       if [ -d "PythonRestAPI" ]; then rm -rf "PythonRestAPI"; fi
     displayName: 'Test SQL Server DB API creation'
     

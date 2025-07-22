@@ -1,218 +1,187 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Function to log messages with timestamp
-log() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
-}
-
-# Exit on error
+# Exit on first error
 set -e
 
-# Function to handle deactivation of PythonREST venv on exit
-cleanup_pythonrest_venv() {
-    if [ -n "$PYTHONREST_VENV_ACTIVATED" ]; then
-        log "Deactivating PythonREST virtual environment due to script exit..."
-        deactivate
-        log "PythonREST virtual environment deactivated."
-        unset PYTHONREST_VENV_ACTIVATED
-    fi
+# Função para logar mensagens com timestamp
+write_log() {
+    echo "[ $(date '+%Y-%m-%d %H:%M:%S') ] $1"
 }
-# Trap EXIT signal to ensure PythonREST venv is deactivated
-trap cleanup_pythonrest_venv EXIT
 
-# 0. Determine Project Root and Script Directory
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-PROJECT_ROOT=$(cd "$SCRIPT_DIR/../../" && pwd)
-log "Script directory: $SCRIPT_DIR"
-log "Project root: $PROJECT_ROOT"
+# Diretórios
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( realpath "$SCRIPT_DIR/../../.." )"
 
-# Change to script's directory for local operations (like docker-compose)
-cd "$SCRIPT_DIR" || exit
-log "Changed directory to $(pwd) for local operations."
+write_log "Script directory: $SCRIPT_DIR"
+write_log "Project root: $PROJECT_ROOT"
 
-# 1. Log script start
-log "Starting MySQL integration test script."
+cd "$PROJECT_ROOT"
+write_log "Changed directory to project root: $(pwd)"
 
-# 2. Start MySQL Docker container
-log "Starting MySQL Docker container..."
-sudo docker-compose up -d
-if [ $? -ne 0 ]; then
-    log "ERROR: Failed to start MySQL Docker container."
-    exit 1 # Trap will handle venv deactivation if it was activated
-fi
-log "MySQL Docker container started."
+# Trap para cleanup do venv PythonREST
+cleanup() {
+    if [[ "$PYTHONREST_VENV_ACTIVATED" == "true" ]]; then
+        write_log "Deactivating PythonREST virtual environment due to script exit..."
+        deactivate || true
+        write_log "PythonREST virtual environment deactivated."
+        PYTHONREST_VENV_ACTIVATED="false"
+    fi
+    docker-compose down || true
+}
+trap cleanup EXIT
 
-# 3. Wait for MySQL container to be healthy
-MYSQL_CONTAINER_NAME="mysql-mysql-1" # Adjust if your container name is different in docker-compose.yml
-log "Waiting for MySQL container ($MYSQL_CONTAINER_NAME) to be healthy..."
+# 1. Início
+write_log "Starting MySQL integration test script."
+
+# 2. Subir container MySQL
+write_log "Starting MySQL Docker container..."
+cd "$SCRIPT_DIR"
+write_log "Changed directory to script location for Docker operations: $(pwd)"
+docker-compose down --remove-orphans
+docker-compose up -d
+
+write_log "MySQL Docker container started."
+
+# 3. Esperar container ficar healthy
+MYSQL_CONTAINER_NAME="mysql-mysql-1"
+write_log "Waiting for MySQL container ($MYSQL_CONTAINER_NAME) to be healthy..."
+
+test_mysql_ready() {
+    docker exec "$MYSQL_CONTAINER_NAME" mysqladmin ping -h localhost -u admin -padminuserdb --silent 2>/dev/null | grep -q "mysqld is alive"
+}
+
 TIMEOUT_SECONDS=120
 SECONDS_WAITED=0
+MAX_RETRIES=3
+retry_count=0
+
 while true; do
-    STATUS=$(docker inspect --format='{{.State.Health.Status}}' $MYSQL_CONTAINER_NAME 2>/dev/null || echo "checking")
-    if [ "$STATUS" == "healthy" ]; then
-        log "MySQL container is healthy."
+    if test_mysql_ready; then
+        write_log "MySQL container is ready and accepting connections."
         break
     fi
-    if [ "$STATUS" == "unhealthy" ]; then
-        log "ERROR: MySQL container is unhealthy. Exiting."
-        docker-compose logs $MYSQL_CONTAINER_NAME
-        docker-compose down
-        exit 1 # Trap will handle venv deactivation
+
+    if [[ $SECONDS_WAITED -ge $TIMEOUT_SECONDS ]]; then
+        if [[ $retry_count -lt $MAX_RETRIES ]]; then
+            retry_count=$((retry_count + 1))
+            write_log "Timeout reached. Restarting container (Attempt $retry_count of $MAX_RETRIES)..."
+            docker-compose restart
+            SECONDS_WAITED=0
+            continue
+        else
+            write_log "ERROR: MySQL container failed to become ready after $MAX_RETRIES attempts."
+            docker-compose logs
+            docker inspect "$MYSQL_CONTAINER_NAME"
+            exit 1
+        fi
     fi
-    if [ $SECONDS_WAITED -ge $TIMEOUT_SECONDS ]; then
-        log "ERROR: Timeout waiting for MySQL container to become healthy. Last status: $STATUS. Exiting."
-        docker-compose logs $MYSQL_CONTAINER_NAME
-        docker-compose down
-        exit 1 # Trap will handle venv deactivation
-    fi
+
+    write_log "Waiting for MySQL to be ready... ($SECONDS_WAITED/$TIMEOUT_SECONDS seconds)"
     sleep 5
     SECONDS_WAITED=$((SECONDS_WAITED + 5))
-    log "Still waiting for MySQL container... ($SECONDS_WAITED/$TIMEOUT_SECONDS seconds)"
 done
 
-# 4. Activate Shared PythonREST Venv
-log "Activating shared PythonREST virtual environment: $PROJECT_ROOT/../venv/bin/activate"
-if [ ! -f "$PROJECT_ROOT/../venv/bin/activate" ]; then
-    log "ERROR: PythonREST venv activate script not found at $PROJECT_ROOT/../venv/bin/activate"
-    docker-compose down
-    exit 1 # Trap will handle venv deactivation if it was activated (though unlikely here)
+# 4. Ativar venv PythonREST
+VENV_ACTIVATE="$PROJECT_ROOT/venv/bin/activate"
+write_log "Activating shared PythonREST virtual environment: $VENV_ACTIVATE"
+if [[ ! -f "$VENV_ACTIVATE" ]]; then
+    write_log "ERROR: PythonREST venv activate script not found at $VENV_ACTIVATE"
+    exit 1
 fi
 # shellcheck source=/dev/null
-source "$PROJECT_ROOT/../venv/bin/activate"
-PYTHONREST_VENV_ACTIVATED=true # Mark as activated for trap
-log "Shared PythonREST virtual environment activated."
+source "$VENV_ACTIVATE"
+PYTHONREST_VENV_ACTIVATED="true"
+write_log "Shared PythonREST virtual environment activated."
 
-# 5. Run PythonREST generation
-log "Running PythonREST generation using $PROJECT_ROOT/../pythonrest.py..."
-cd "$PROJECT_ROOT/.."
-python "pythonrest.py" generate --mysql-connection-string mysql://admin:adminuserdb@localhost:3306/database_mapper_mysql > /tmp/pythonrest_generate_mysql.log 2>&1
-GENERATION_STATUS=$?
-cd "$SCRIPT_DIR"
-if [ $GENERATION_STATUS -ne 0 ]; then
-    log "ERROR: PythonREST generation failed. See /tmp/pythonrest_generate_mysql.log for details."
-    cat /tmp/pythonrest_generate_mysql.log
-    # Deactivation will be handled by trap
-    docker-compose down
+# 5. Rodar geração PythonREST
+write_log "Running PythonREST generation..."
+cd "$PROJECT_ROOT"
+python "$PROJECT_ROOT/pythonrest.py" generate --mysql-connection-string "mysql://admin:adminuserdb@localhost:3306/database_mapper_mysql"
+
+write_log "PythonREST generation completed successfully."
+
+# 6. Checar pasta PythonRestAPI
+GENERATED_API_PATH="$PROJECT_ROOT/PythonRestAPI"
+write_log "Checking for generated API at: $GENERATED_API_PATH"
+if [[ ! -d "$GENERATED_API_PATH" ]]; then
+    write_log "ERROR: 'PythonRestAPI' folder not found at $GENERATED_API_PATH after PythonREST generation."
     exit 1
 fi
-log "PythonREST generation output logged to /tmp/pythonrest_generate_mysql.log."
+write_log "'PythonRestAPI' folder found."
 
-# 6. Log PythonREST generation status and check for PythonRestAPI folder
-# PythonRestAPI folder will be created in the project root directory
-if [ ! -d "$PROJECT_ROOT/../PythonRestAPI" ]; then
-    log "ERROR: 'PythonRestAPI' folder not found in $PROJECT_ROOT/.. after PythonREST generation."
-    # Deactivation will be handled by trap
-    docker-compose down
-    exit 1
-fi
-log "PythonREST generation successful. 'PythonRestAPI' folder found in $PROJECT_ROOT/.. ."
+# 7. Ir para PythonRestAPI
+cd "$GENERATED_API_PATH"
+write_log "Changed directory to $(pwd)."
 
-# 7. Change directory to PythonRestAPI
-cd "$PROJECT_ROOT/../PythonRestAPI" || exit
-log "Changed directory to $(pwd)."
+# 8. Criar venv para API gerada
+write_log "Creating Python virtual environment for generated API..."
+python -m venv venv
 
-# 8. Create Python virtual environment for the generated API
-log "Creating Python virtual environment for generated API..."
-python3 -m venv venv
-if [ $? -ne 0 ]; then
-    log "ERROR: Failed to create Python virtual environment for generated API."
-    cd .. # Back to $SCRIPT_DIR
-    # Deactivation of PythonREST venv will be handled by trap
-    docker-compose down
-    exit 1
-fi
-log "Python virtual environment for generated API created."
+write_log "Python virtual environment for generated API created."
 
-# 9. Activate virtual environment for the generated API
-log "Activating virtual environment for generated API..."
+# 9. Ativar venv da API gerada
 # shellcheck source=/dev/null
-source venv/bin/activate
-log "Virtual environment for generated API activated."
+source "./venv/bin/activate"
+write_log "Virtual environment for generated API activated."
 
-# 10. Install dependencies for the generated API
-log "Installing dependencies from requirements.txt for generated API..."
-pip install -r requirements.txt > /tmp/pip_install_mysql_api.log 2>&1
-INSTALL_STATUS=$?
-if [ $INSTALL_STATUS -ne 0 ]; then
-    log "ERROR: Failed to install dependencies for generated API. See /tmp/pip_install_mysql_api.log for details."
-    cat /tmp/pip_install_mysql_api.log
-    deactivate # Deactivate generated API venv
-    log "Virtual environment for generated API deactivated."
-    cd .. # Back to $SCRIPT_DIR
-    # Deactivation of PythonREST venv will be handled by trap
-    docker-compose down
-    exit 1
-fi
-log "Dependencies for generated API installed successfully. Output logged to /tmp/pip_install_mysql_api.log."
+# 10. Instalar dependências
+PIP_LOG="/tmp/pip_install_mysql_api.log"
+write_log "Installing dependencies from requirements.txt for generated API..."
+pip install -r requirements.txt | tee "$PIP_LOG"
 
-# 11. Start the Flask API in the background
-log "Starting Flask API in the background..."
-setsid python app.py > /tmp/api_output_mysql.log 2>&1 &
+write_log "Dependencies installed. Output logged to $PIP_LOG"
+
+# 11. Iniciar Flask API em background
+API_LOG="/tmp/api_output_mysql.log"
+API_LOG_ERROR="/tmp/api_error_output_mysql.log"
+write_log "Starting Flask API in the background..."
+python app.py > "$API_LOG" 2> "$API_LOG_ERROR" &
 API_PID=$!
-log "Flask API started with PID $API_PID. Output logged to /tmp/api_output_mysql.log."
+write_log "Flask API started with PID $API_PID."
 
-# 12. Wait for API to start and check
-log "Waiting for API to start (5 seconds)..."
+# 12. Esperar API subir
+write_log "Waiting for API to start (5 seconds)..."
 sleep 5
-curl -f http://localhost:5000/mcp/ask/configure > /tmp/curl_check_mysql.log 2>&1
-CURL_STATUS=$?
-if [ $CURL_STATUS -ne 0 ]; then
-    log "ERROR: API failed to start or is not responding. Curl check failed. See /tmp/curl_check_mysql.log."
-    cat /tmp/curl_check_mysql.log
-    log "API logs (/tmp/api_output_mysql.log):"
-    cat /tmp/api_output_mysql.log
-    kill $API_PID
-    deactivate # Deactivate generated API venv
-    log "Virtual environment for generated API deactivated."
-    cd .. # Back to $SCRIPT_DIR
-    # Deactivation of PythonREST venv will be handled by trap
-    docker-compose down
+
+if curl -s -o /tmp/curl_check_mysql.log -w "%{http_code}" http://localhost:5000 | grep -E "200|400|404" >/dev/null; then
+    write_log "API started and responding."
+else
+    write_log "ERROR: API failed to start or is not responding."
+    cat "$API_LOG"
+    cat "$API_LOG_ERROR"
+    kill $API_PID || true
+    deactivate
     exit 1
 fi
-log "API started and responding."
-rm /tmp/curl_check_mysql.log # Clean up successful check log
+rm -f /tmp/curl_check_mysql.log
 
-# 13. Perform a sample curl GET request
-log "Performing sample GET request to http://localhost:5000/mcp/ask/configure (actual table endpoint might differ)..."
-curl http://localhost:5000/mcp/ask/configure > /tmp/curl_test_mysql.log 2>&1
-if [ $? -ne 0 ]; then
-    log "WARNING: Sample curl GET request failed. This might indicate an issue or no default route. See /tmp/curl_test_mysql.log."
-    cat /tmp/curl_test_mysql.log
-else
-    log "Sample curl GET request successful. Response logged to /tmp/curl_test_mysql.log."
-fi
+# 13. Teste GET
+write_log "Performing sample GET request to http://localhost:5000/swagger..."
+curl -s -o /tmp/curl_test_mysql.log http://localhost:5000/swagger || true
+write_log "Sample GET request output:"
+cat /tmp/curl_test_mysql.log
 
-# 14. Kill the Flask API process
-log "Killing Flask API (PID $API_PID)..."
-sudo kill $API_PID
-wait $API_PID 2>/dev/null # Suppress "Terminated" message
-log "Flask API process killed."
+# 14. Matar API
+write_log "Killing Flask API (PID $API_PID)..."
+kill $API_PID || true
+write_log "Flask API process killed."
 
-# 15. Deactivate virtual environment for the generated API
-log "Deactivating virtual environment for generated API..."
+# 15. Desativar venv da API gerada
+write_log "Deactivating virtual environment for generated API..."
 deactivate
-log "Virtual environment for generated API deactivated."
+write_log "Virtual environment for generated API deactivated."
 
-# 16. Change directory back to $SCRIPT_DIR
-cd ..
-log "Changed directory to $(pwd)."
+# 16. Voltar para $SCRIPT_DIR
+cd "$SCRIPT_DIR"
+write_log "Changed directory to $(pwd)."
 
-# 17. Deactivate Shared PythonREST Venv (explicitly, trap will also try but that's fine)
-log "Deactivating shared PythonREST virtual environment (explicitly)..."
-deactivate
-PYTHONREST_VENV_ACTIVATED=false # Mark as explicitly deactivated
-log "Shared PythonREST virtual environment deactivated."
+# 17. Desativar venv PythonREST (feito no trap)
 
-# 18. Stop and remove Docker container
-log "Stopping and removing MySQL Docker container..."
-sudo docker-compose down
-if [ $? -ne 0 ]; then
-    log "WARNING: docker-compose down command failed. Manual cleanup might be required."
-fi
-log "MySQL Docker container stopped and removed."
+# 18. Parar e remover container
+write_log "Stopping and removing MySQL Docker container..."
+docker-compose down
+write_log "MySQL Docker container stopped and removed."
 
-# 19. Log script completion
-# Unset trap before successful exit to avoid double deactivation message if it was already explicitly done
-trap - EXIT
-log "MySQL integration test script completed successfully."
+# 19. Fim
+write_log "MySQL integration test script completed successfully."
 exit 0
