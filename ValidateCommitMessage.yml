@@ -33,8 +33,6 @@ jobs:
     displayName: "Check commit message format"
 
   - script: |
-      choco install python --version=3.11.5 -y
-      refreshenv
       python --version
       if not python --version | findstr "3.11" >nul; then
         echo 'Python 3.11 is not installed correctly!'; exit 1;
