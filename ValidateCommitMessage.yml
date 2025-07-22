@@ -45,7 +45,7 @@ jobs:
       
       echo "Verifying installations..."
       docker --version
-      docker-compose --version
+      docker compose --version
       python --version
       pwsh --version
       

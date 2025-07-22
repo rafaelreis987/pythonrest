@@ -51,13 +51,13 @@ Write-Log "Starting SQL Server integration test."
 # 2. Start SQL Server container
 # ---------------------------------------------
 Set-Location $SCRIPT_DIR
-Write-Log "Running docker-compose..."
-docker-compose down --remove-orphans
-docker-compose up -d
+Write-Log "Running docker compose..."
+docker compose down --remove-orphans
+docker compose up -d
 
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: Failed to start SQL Server container."
-    docker-compose logs
+    docker compose logs
     exit 1
 }
 
@@ -89,15 +89,15 @@ while ($true) {
     if ($ELAPSED -ge $TIMEOUT) {
         if ($RETRY -lt $MAX_RETRIES) {
             Write-Log "Timeout. Restarting container (attempt $($RETRY + 1)/$MAX_RETRIES)..."
-            docker-compose restart
+            docker compose restart
             $ELAPSED = 0
             $RETRY++
             continue
         }
         Write-Log "ERROR: SQL Server not ready after retries."
-        docker-compose logs
+        docker compose logs
         docker inspect $SQLSERVER_CONTAINER_NAME
-        docker-compose down
+        docker compose down
         exit 1
     }
     Write-Log "Waiting... ($ELAPSED/$TIMEOUT)"
@@ -118,7 +118,7 @@ docker exec $SQLSERVER_CONTAINER_NAME /opt/mssql-tools18/bin/sqlcmd `
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: SQL script failed."
     Get-Content $SQLCMD_LOG
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -133,7 +133,7 @@ $VENV_ACTIVATE = Join-Path $PROJECT_ROOT "venv\Scripts\Activate.ps1"
 
 if (-not (Test-Path $VENV_ACTIVATE)) {
     Write-Log "ERROR: PythonREST venv not found at $VENV_ACTIVATE"
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -152,7 +152,7 @@ python "$PROJECT_ROOT\pythonrest.py" generate --sqlserver-connection-string `
 
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: Generation failed."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -163,7 +163,7 @@ $API_PATH = Join-Path $PROJECT_ROOT "PythonRestAPI"
 
 if (-not (Test-Path $API_PATH)) {
     Write-Log "ERROR: PythonRestAPI not found."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -214,7 +214,7 @@ try {
         Get-Content $API_ERR
         Stop-Process -Id $API_PROCESS.Id -Force
         deactivate
-        docker-compose down
+        docker compose down
         exit 1
     }
     Write-Log "API up (status $status)"
@@ -244,7 +244,7 @@ Write-Log "Deactivating PythonREST venv..."
 Cleanup-PythonRESTVenv
 
 Write-Log "Stopping containers..."
-docker-compose down
+docker compose down
 
 Write-Log "Done!"
 exit 0

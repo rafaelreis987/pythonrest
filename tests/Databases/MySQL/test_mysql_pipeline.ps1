@@ -40,12 +40,12 @@ Write-Log "Starting MySQL integration test..."
 # Start Docker container
 Set-Location $SCRIPT_DIR
 Write-Log "Bringing up MySQL Docker container..."
-docker-compose down --remove-orphans
-docker-compose up -d
+docker compose down --remove-orphans
+docker compose up -d
 
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: Docker Compose failed."
-    docker-compose logs
+    docker compose logs
     exit 1
 }
 
@@ -76,15 +76,15 @@ while ($true) {
     if ($SECONDS_WAITED -ge $TIMEOUT_SECONDS) {
         if ($RetryCount -lt $MAX_RETRIES) {
             Write-Log "Timeout. Restarting container (attempt $($RetryCount+1)/$MAX_RETRIES)..."
-            docker-compose restart
+            docker compose restart
             $SECONDS_WAITED = 0
             $RetryCount++
             continue
         }
         Write-Log "ERROR: MySQL did not become healthy."
-        docker-compose logs
+        docker compose logs
         docker inspect $MYSQL_CONTAINER_NAME
-        docker-compose down
+        docker compose down
         exit 1
     }
 
@@ -103,7 +103,7 @@ Write-Log "Activating base venv: $VENV_ACTIVATE"
 
 if (-not (Test-Path $VENV_ACTIVATE)) {
     Write-Log "ERROR: venv activate not found!"
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -118,7 +118,7 @@ python "$PROJECT_ROOT/pythonrest.py" generate --mysql-connection-string mysql://
 
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: PythonREST generate failed."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -126,7 +126,7 @@ if ($LASTEXITCODE -ne 0) {
 $GENERATED_API_PATH = "$PROJECT_ROOT/PythonRestAPI"
 if (-not (Test-Path $GENERATED_API_PATH)) {
     Write-Log "ERROR: PythonRestAPI folder not found."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -138,7 +138,7 @@ Write-Log "Creating venv for generated API..."
 python -m venv venv
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: Failed to create API venv."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -157,7 +157,7 @@ python -m pip install -r requirements.txt
 
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: pip install failed."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -179,7 +179,7 @@ try {
     Write-Log "API did not respond. Checking log..."
     Get-Content $API_LOG
     Stop-Process -Id $API_PROCESS.Id -Force
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -202,7 +202,7 @@ $script:PYTHONREST_VENV_ACTIVATED = $false
 
 # Stop containers
 Write-Log "Stopping Docker containers..."
-docker-compose down
+docker compose down
 
 Write-Log "MySQL integration test completed successfully."
 exit 0

@@ -38,11 +38,11 @@ Write-Log "Starting PostgreSQL integration test script."
 # Start PostgreSQL container
 Write-Log "Starting PostgreSQL Docker container..."
 Set-Location $SCRIPT_DIR
-docker-compose down --remove-orphans
-docker-compose up -d
+docker compose down --remove-orphans
+docker compose up -d
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: Failed to start PostgreSQL Docker container."
-    docker-compose logs
+    docker compose logs
     exit 1
 }
 Write-Log "PostgreSQL Docker container started."
@@ -57,7 +57,7 @@ $VENV_ACTIVATE = "$PROJECT_ROOT/venv/bin/activate"
 Write-Log "Activating shared PythonREST virtual environment: $VENV_ACTIVATE"
 if (-not (Test-Path $VENV_ACTIVATE)) {
     Write-Log "ERROR: PythonREST venv activate script not found at $VENV_ACTIVATE"
-    docker-compose down
+    docker compose down
     exit 1
 }
 . $VENV_ACTIVATE
@@ -72,7 +72,7 @@ python "$PROJECT_ROOT/pythonrest.py" generate --postgres-connection-string "post
 
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: PythonREST generation failed."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -83,7 +83,7 @@ $GENERATED_API_PATH = "$PROJECT_ROOT/PythonRestAPI"
 Write-Log "Checking for generated API at: $GENERATED_API_PATH"
 if (-not (Test-Path $GENERATED_API_PATH)) {
     Write-Log "ERROR: 'PythonRestAPI' folder not found at $GENERATED_API_PATH after generation."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -98,7 +98,7 @@ Write-Log "Creating Python virtual environment for generated API..."
 python -m venv venv
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: Failed to create Python virtual environment."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -117,7 +117,7 @@ Write-Log "Installing dependencies from requirements.txt..."
 python -m pip install -r requirements.txt
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: pip install failed."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -142,7 +142,7 @@ try {
     Stop-Process -Id $API_PROCESS.Id -Force
     deactivate
     Write-Log "Deactivated generated API venv."
-    docker-compose down
+    docker compose down
     exit 1
 }
 
@@ -165,7 +165,7 @@ $script:PYTHONREST_VENV_ACTIVATED = $false
 
 # Stop container
 Write-Log "Stopping and removing PostgreSQL Docker container..."
-docker-compose down
+docker compose down
 
 Write-Log "PostgreSQL integration test script completed successfully."
 exit 0
