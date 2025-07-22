@@ -1,7 +1,6 @@
 #!/usr/bin/env pwsh
 
-# Cross-platform version of MySQL test script
-# For Linux runners using PowerShell Core (pwsh)
+# Cross-platform version of MySQL test script for Linux runners using PowerShell Core
 
 # Function for logging
 function Write-Log {
@@ -11,18 +10,6 @@ function Write-Log {
 
 # Stop on first error
 $ErrorActionPreference = "Stop"
-
-# Cleanup handler for base venv
-function Cleanup-PythonRESTVenv {
-    if ($script:PYTHONREST_VENV_ACTIVATED) {
-        Write-Log "Deactivating base PythonREST venv..."
-        deactivate
-        $script:PYTHONREST_VENV_ACTIVATED = $false
-    }
-}
-
-# Register cleanup on exit
-Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action { Cleanup-PythonRESTVenv }
 
 # Determine directories
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -34,10 +21,10 @@ Write-Log "Project root: $PROJECT_ROOT"
 Set-Location $PROJECT_ROOT
 Write-Log "Changed directory to: $(Get-Location)"
 
-# Start
+# Start test
 Write-Log "Starting MySQL integration test..."
 
-# Start Docker container
+# Bring up Docker container
 Set-Location $SCRIPT_DIR
 Write-Log "Bringing up MySQL Docker container..."
 docker compose down --remove-orphans
@@ -49,7 +36,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Wait for container to be healthy
+# Wait for MySQL to be healthy
 $MYSQL_CONTAINER_NAME = "mysql-mysql-1"
 Write-Log "Waiting for container $MYSQL_CONTAINER_NAME to be healthy..."
 
@@ -75,7 +62,7 @@ while ($true) {
 
     if ($SECONDS_WAITED -ge $TIMEOUT_SECONDS) {
         if ($RetryCount -lt $MAX_RETRIES) {
-            Write-Log "Timeout. Restarting container (attempt $($RetryCount+1)/$MAX_RETRIES)..."
+            Write-Log "Timeout. Restarting container (attempt $($RetryCount + 1)/$MAX_RETRIES)..."
             docker compose restart
             $SECONDS_WAITED = 0
             $RetryCount++
@@ -93,28 +80,21 @@ while ($true) {
     $SECONDS_WAITED += 5
 }
 
-# Activate base venv
-if ($IsWindows) {
-    $VENV_ACTIVATE = "$PROJECT_ROOT/venv/Scripts/activate.ps1"
-} else {
-    $VENV_ACTIVATE = "$PROJECT_ROOT/venv/bin/activate.ps1"
-}
-Write-Log "Activating base venv: $VENV_ACTIVATE"
+# Define base venv Python
+$PYTHON = "$PROJECT_ROOT/venv/bin/python"
 
-if (-not (Test-Path $VENV_ACTIVATE)) {
-    Write-Log "ERROR: venv activate not found!"
+# Check if Python exists
+if (-not (Test-Path $PYTHON)) {
+    Write-Log "ERROR: Python venv not found at $PYTHON"
     docker compose down
     exit 1
 }
 
-. $VENV_ACTIVATE
-$script:PYTHONREST_VENV_ACTIVATED = $true
-Write-Log "Base venv activated."
+Write-Log "Using Python: $PYTHON"
 
 # Run generator
 Write-Log "Running PythonREST generate..."
-Set-Location $PROJECT_ROOT
-python "$PROJECT_ROOT/pythonrest.py" generate --mysql-connection-string mysql://admin:adminuserdb@localhost:3306/database_mapper_mysql
+& $PYTHON "$PROJECT_ROOT/pythonrest.py" generate --mysql-connection-string mysql://admin:adminuserdb@localhost:3306/database_mapper_mysql
 
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: PythonREST generate failed."
@@ -135,25 +115,26 @@ Write-Log "PythonRestAPI generated at: $GENERATED_API_PATH"
 # Create venv for generated API
 Set-Location $GENERATED_API_PATH
 Write-Log "Creating venv for generated API..."
-python -m venv venv
+& $PYTHON -m venv venv
+
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: Failed to create API venv."
     docker compose down
     exit 1
 }
 
-# Activate API venv
-if ($IsWindows) {
-    $API_VENV_ACTIVATE = "./venv/Scripts/activate.ps1"
-} else {
-    $API_VENV_ACTIVATE = "./venv/bin/activate.ps1"
-}
-Write-Log "Activating generated API venv..."
-. $API_VENV_ACTIVATE
+# Define generated API venv Python
+$API_VENV_PYTHON = "$GENERATED_API_PATH/venv/bin/python"
 
-# Install requirements
-Write-Log "Installing requirements..."
-python -m pip install -r requirements.txt
+if (-not (Test-Path $API_VENV_PYTHON)) {
+    Write-Log "ERROR: Generated API Python not found!"
+    docker compose down
+    exit 1
+}
+
+Write-Log "Installing requirements in generated API venv..."
+& $API_VENV_PYTHON -m pip install --upgrade pip
+& $API_VENV_PYTHON -m pip install -r requirements.txt
 
 if ($LASTEXITCODE -ne 0) {
     Write-Log "ERROR: pip install failed."
@@ -167,8 +148,9 @@ if ($IsWindows) {
 } else {
     $API_LOG = "/tmp/api_output_mysql.log"
 }
-Write-Log "Starting API..."
-$API_PROCESS = Start-Process python -ArgumentList "app.py" -RedirectStandardOutput $API_LOG -RedirectStandardError $API_LOG -PassThru
+
+Write-Log "Starting generated API..."
+$API_PROCESS = Start-Process $API_VENV_PYTHON -ArgumentList "app.py" -RedirectStandardOutput $API_LOG -RedirectStandardError $API_LOG -PassThru
 
 Start-Sleep -Seconds 5
 
@@ -183,22 +165,13 @@ try {
     exit 1
 }
 
-# Do a test GET
+# Test /swagger
 Write-Log "Checking /swagger..."
 Invoke-WebRequest -Uri "http://localhost:5000/swagger" -UseBasicParsing
 
-# Kill API
-Write-Log "Stopping API..."
+# Stop API
+Write-Log "Stopping generated API..."
 Stop-Process -Id $API_PROCESS.Id -Force
-
-# Deactivate venvs
-Write-Log "Deactivating generated API venv..."
-deactivate
-
-Write-Log "Deactivating base venv..."
-deactivate
-
-$script:PYTHONREST_VENV_ACTIVATED = $false
 
 # Stop containers
 Write-Log "Stopping Docker containers..."

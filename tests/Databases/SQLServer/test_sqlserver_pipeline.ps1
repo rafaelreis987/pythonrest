@@ -2,11 +2,13 @@
 # SQL Server Integration Test Script
 # =============================================
 
-# Sair ao primeiro erro
+#!/usr/bin/env pwsh
+
+# Parar ao primeiro erro
 $ErrorActionPreference = "Stop"
 
 # ---------------------------------------------
-# Função para logar mensagens com timestamp
+# Função de log com timestamp
 # ---------------------------------------------
 function Write-Log {
     param($Message)
@@ -18,7 +20,7 @@ function Write-Log {
 # ---------------------------------------------
 function Cleanup-PythonRESTVenv {
     if ($script:PYTHONREST_VENV_ACTIVATED) {
-        Write-Log "Desativando o ambiente virtual PythonREST..."
+        Write-Log "Desativando ambiente virtual PythonREST..."
         deactivate
         $script:PYTHONREST_VENV_ACTIVATED = $false
         Write-Log "Ambiente virtual PythonREST desativado."
@@ -26,48 +28,48 @@ function Cleanup-PythonRESTVenv {
 }
 
 # ---------------------------------------------
-# Registrar cleanup para rodar no exit
+# Registrar cleanup ao sair
 # ---------------------------------------------
 Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action { Cleanup-PythonRESTVenv }
 
 # ---------------------------------------------
-# Paths
+# Diretórios base
 # ---------------------------------------------
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
-$PROJECT_ROOT = Resolve-Path (Join-Path $SCRIPT_DIR "..\..\..\") | ForEach-Object { $_.Path }
+$PROJECT_ROOT = Resolve-Path "$SCRIPT_DIR/../../.." | ForEach-Object { $_.Path }
 
 Write-Log "Script dir: $SCRIPT_DIR"
 Write-Log "Project root: $PROJECT_ROOT"
 
 Set-Location $PROJECT_ROOT
-Write-Log "Changed to project root: $(Get-Location)"
+Write-Log "Mudou para project root: $(Get-Location)"
 
 # ---------------------------------------------
-# 1. Start
+# 1. Início
 # ---------------------------------------------
-Write-Log "Starting SQL Server integration test."
+Write-Log "Iniciando teste de integração SQL Server."
 
 # ---------------------------------------------
-# 2. Start SQL Server container
+# 2. Iniciar container SQL Server
 # ---------------------------------------------
 Set-Location $SCRIPT_DIR
-Write-Log "Running docker compose..."
+Write-Log "Executando docker compose..."
 docker compose down --remove-orphans
 docker compose up -d
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Log "ERROR: Failed to start SQL Server container."
+    Write-Log "ERRO: Falha ao subir container SQL Server."
     docker compose logs
     exit 1
 }
 
-Write-Log "Container up."
+Write-Log "Container SQL Server iniciado."
 
 # ---------------------------------------------
-# 3. Wait for SQL Server to be healthy
+# 3. Esperar container ficar saudável
 # ---------------------------------------------
 $SQLSERVER_CONTAINER_NAME = "sql-server-database-mapper"
-Write-Log "Waiting for container '$SQLSERVER_CONTAINER_NAME' to be healthy..."
+Write-Log "Esperando container '$SQLSERVER_CONTAINER_NAME' ficar pronto..."
 
 function Test-SQLServerReady {
     try {
@@ -83,168 +85,166 @@ $RETRY = 0
 
 while ($true) {
     if (Test-SQLServerReady) {
-        Write-Log "SQL Server is ready."
+        Write-Log "SQL Server pronto."
         break
     }
     if ($ELAPSED -ge $TIMEOUT) {
         if ($RETRY -lt $MAX_RETRIES) {
-            Write-Log "Timeout. Restarting container (attempt $($RETRY + 1)/$MAX_RETRIES)..."
+            Write-Log "Timeout. Reiniciando container (tentativa $($RETRY + 1)/$MAX_RETRIES)..."
             docker compose restart
             $ELAPSED = 0
             $RETRY++
             continue
         }
-        Write-Log "ERROR: SQL Server not ready after retries."
+        Write-Log "ERRO: SQL Server não ficou pronto após tentativas."
         docker compose logs
         docker inspect $SQLSERVER_CONTAINER_NAME
         docker compose down
         exit 1
     }
-    Write-Log "Waiting... ($ELAPSED/$TIMEOUT)"
+    Write-Log "Aguardando... ($ELAPSED/$TIMEOUT)"
     Start-Sleep -Seconds 5
     $ELAPSED += 5
 }
 
 # ---------------------------------------------
-# 4. Run SQL script
+# 4. Executar script SQL
 # ---------------------------------------------
-Write-Log "Running init SQL script..."
+Write-Log "Executando script SQL inicial..."
 $SQLCMD_LOG = "$env:TEMP\sqlcmd_sqlserver.log"
+
 docker exec $SQLSERVER_CONTAINER_NAME /opt/mssql-tools18/bin/sqlcmd `
     -C -S localhost -U SA -P '24ad0a77-c59b-4479-b508-72b83615f8ed' -d master `
     -i /docker-entrypoint-initdb.d/database_mapper_sqlserver.sql `
     > $SQLCMD_LOG 2>&1
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Log "ERROR: SQL script failed."
+    Write-Log "ERRO: Falha ao executar script SQL."
     Get-Content $SQLCMD_LOG
     docker compose down
     exit 1
 }
 
-Write-Log "SQL script executed."
-
+Write-Log "Script SQL executado com sucesso."
 Start-Sleep -Seconds 10
 
 # ---------------------------------------------
-# 5. Activate PythonREST venv
+# 5. Ativar venv base PythonREST
 # ---------------------------------------------
-$VENV_ACTIVATE = Join-Path $PROJECT_ROOT "venv\Scripts\Activate.ps1"
+$VENV_ACTIVATE = "$PROJECT_ROOT/venv/bin/activate"
 
 if (-not (Test-Path $VENV_ACTIVATE)) {
-    Write-Log "ERROR: PythonREST venv not found at $VENV_ACTIVATE"
+    Write-Log "ERRO: venv PythonREST não encontrado em $VENV_ACTIVATE"
     docker compose down
     exit 1
 }
 
+Write-Log "Ativando venv PythonREST..."
 . $VENV_ACTIVATE
 $script:PYTHONREST_VENV_ACTIVATED = $true
-Write-Log "PythonREST venv activated."
+Write-Log "venv PythonREST ativado."
 
 # ---------------------------------------------
-# 6. Run PythonREST generation
+# 6. Executar geração PythonREST
 # ---------------------------------------------
-Write-Log "Running PythonREST generate..."
+Write-Log "Executando geração PythonREST..."
 Set-Location $PROJECT_ROOT
 
-python "$PROJECT_ROOT\pythonrest.py" generate --sqlserver-connection-string `
+python "$PROJECT_ROOT/pythonrest.py" generate --sqlserver-connection-string `
     "mssql://sa:24ad0a77-c59b-4479-b508-72b83615f8ed@localhost:1433/database_mapper_sqlserver"
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Log "ERROR: Generation failed."
+    Write-Log "ERRO: Geração PythonREST falhou."
     docker compose down
     exit 1
 }
 
 # ---------------------------------------------
-# 7. Check generated API
+# 7. Verificar API gerada
 # ---------------------------------------------
-$API_PATH = Join-Path $PROJECT_ROOT "PythonRestAPI"
+$API_PATH = "$PROJECT_ROOT/PythonRestAPI"
 
 if (-not (Test-Path $API_PATH)) {
-    Write-Log "ERROR: PythonRestAPI not found."
+    Write-Log "ERRO: Pasta PythonRestAPI não encontrada."
     docker compose down
     exit 1
 }
 
 Set-Location $API_PATH
-Write-Log "Switched to generated API dir: $(Get-Location)"
+Write-Log "Mudou para pasta API gerada: $(Get-Location)"
 
 # ---------------------------------------------
-# 8. Create & activate API venv
+# 8. Criar e ativar venv da API gerada
 # ---------------------------------------------
-Write-Log "Creating API venv..."
+Write-Log "Criando venv da API..."
 python -m venv venv
-. (Join-Path $API_PATH "venv\Scripts\Activate.ps1")
-Write-Log "API venv activated."
+
+$GENERATED_VENV_ACTIVATE = "$API_PATH/venv/bin/activate"
+Write-Log "Ativando venv da API..."
+. $GENERATED_VENV_ACTIVATE
+Write-Log "venv da API ativado."
 
 # ---------------------------------------------
-# 9. Install deps
+# 9. Instalar dependências
 # ---------------------------------------------
-Write-Log "Installing dependencies..."
+Write-Log "Instalando dependências..."
 python -m pip install -r requirements.txt
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Log "ERROR: pip install failed."
+    Write-Log "ERRO: Falha no pip install."
+    docker compose down
     exit 1
 }
 
 # ---------------------------------------------
-# 10. Run API
+# 10. Rodar API
 # ---------------------------------------------
-$API_LOG = "$env:TEMP\api_sqlserver.log"
-$API_ERR = "$env:TEMP\api_sqlserver_err.log"
+$API_LOG = "/tmp/api_sqlserver.log"
 
-Write-Log "Starting API..."
+Write-Log "Iniciando API Flask..."
 $API_PROCESS = Start-Process python -ArgumentList "app.py" `
     -RedirectStandardOutput $API_LOG `
-    -RedirectStandardError $API_ERR `
+    -RedirectStandardError $API_LOG `
     -PassThru
 
 Start-Sleep -Seconds 5
 
 try {
-    $r = Invoke-WebRequest -Uri "http://localhost:5000" -UseBasicParsing -OutFile "$env:TEMP\curl_check_sqlserver.log"
-    Write-Log "API is up (status $($r.StatusCode))"
+    $response = Invoke-WebRequest -Uri "http://localhost:5000" -UseBasicParsing
+    Write-Log "API respondeu com status $($response.StatusCode)."
 } catch {
-    $status = $_.Exception.Response.StatusCode.value__
-    if ($status -ne 400 -and $status -ne 404) {
-        Write-Log "ERROR: API not responding. Logs:"
-        Get-Content $API_LOG
-        Get-Content $API_ERR
-        Stop-Process -Id $API_PROCESS.Id -Force
-        deactivate
-        docker compose down
-        exit 1
-    }
-    Write-Log "API up (status $status)"
+    Write-Log "ERRO: API não respondeu. Verificando log..."
+    Get-Content $API_LOG
+    Stop-Process -Id $API_PROCESS.Id -Force
+    deactivate
+    Cleanup-PythonRESTVenv
+    docker compose down
+    exit 1
 }
 
-Remove-Item "$env:TEMP\curl_check_sqlserver.log" -ErrorAction SilentlyContinue
+# ---------------------------------------------
+# 11. Testar GET
+# ---------------------------------------------
+Write-Log "Testando endpoint /swagger..."
+Invoke-WebRequest -Uri "http://localhost:5000/swagger" -UseBasicParsing
 
 # ---------------------------------------------
-# 11. Test GET
+# 12. Finalizar API
 # ---------------------------------------------
-Write-Log "Testing GET /swagger..."
-Invoke-WebRequest -Uri "http://localhost:5000/swagger" -UseBasicParsing -OutFile "$env:TEMP\curl_test_sqlserver.log"
-
-# ---------------------------------------------
-# 12. Kill API
-# ---------------------------------------------
-Write-Log "Killing API (PID $($API_PROCESS.Id))..."
+Write-Log "Parando API (PID $($API_PROCESS.Id))..."
 Stop-Process -Id $API_PROCESS.Id -Force
 
 # ---------------------------------------------
-# 13. Cleanup
+# 13. Cleanup final
 # ---------------------------------------------
-Write-Log "Deactivating API venv..."
+Write-Log "Desativando venv da API..."
 deactivate
 
-Write-Log "Deactivating PythonREST venv..."
+Write-Log "Desativando venv PythonREST..."
 Cleanup-PythonRESTVenv
 
-Write-Log "Stopping containers..."
+Write-Log "Parando containers..."
 docker compose down
 
-Write-Log "Done!"
+Write-Log "Script de teste SQL Server finalizado com sucesso!"
 exit 0
