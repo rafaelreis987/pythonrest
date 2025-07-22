@@ -5,7 +5,7 @@ pr:
       - main
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'windows-latest'
 
 variables:
 - group: pythonrest-cli
@@ -14,7 +14,7 @@ jobs:
 - job: ValidateCommitMessage
   displayName: Validate commit message
   pool:
-    vmImage: ubuntu-latest
+    vmImage: windows-latest
   steps:
   - checkout: self
   - script: |
@@ -34,65 +34,52 @@ jobs:
     displayName: "Check commit message format"
 
   - script: |
-      sudo apt-get update
-      sudo apt-get install -y software-properties-common
-      sudo add-apt-repository ppa:deadsnakes/ppa -y
-      sudo apt-get update
-      sudo apt-get install -y python3.11 python3.11-venv python3.11-distutils
-      sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
-      sudo apt-get install -y docker.io docker-compose-plugin
-      # Garante que o comando docker-compose funcione (compatível com diferentes distros)
-      if [ ! -e /usr/local/bin/docker-compose ]; then
-        if [ -e /usr/libexec/docker/cli-plugins/docker-compose ]; then
-          sudo ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
-        elif [ -e /usr/lib/docker/cli-plugins/docker-compose ]; then
-          sudo ln -s /usr/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
-        fi
-      fi
-      sudo systemctl start docker
-      sudo systemctl enable docker
-      python3 --version
-      if ! python3 --version | grep -q '3.11'; then
+      choco install python --version=3.11.5 -y
+      refreshenv
+      python --version
+      if not python --version | findstr "3.11" >nul; then
         echo 'Python 3.11 não está instalado corretamente!'; exit 1;
       fi
+      choco install docker-desktop -y
       docker --version
       docker-compose version
-      if ! docker info > /dev/null 2>&1; then
+      net start com.docker.service
+      if not docker info >nul 2>&1; then
         echo 'Docker não está rodando!'; exit 1;
       fi
     displayName: 'Install and verify Python 3.11 and Docker'
 
   - script: |
-      python3 -m venv venv
-      source venv/bin/activate
+      python -m venv venv
+      venv\Scripts\activate
       pip install --upgrade pip setuptools wheel
       python setup.py sdist
     displayName: 'Validate pip package build'
 
   - script: |
       python -m venv venv
-      source venv/bin/activate
+      venv\Scripts\activate
       pip install --upgrade pip
       pip install -r requirements.txt
       pwsh -Command "& { ./tests/Databases/MySQL/test_mysql.ps1 }"
-      rm -rf PythonRestAPI
+      rmdir /S /Q PythonRestAPI
     displayName: 'Test MySQL DB API creation'
 
   - script: |
       python -m venv venv
-      source venv/bin/activate
+      venv\Scripts\activate
       pip install --upgrade pip
       pip install -r requirements.txt
       pwsh -Command "& { ./tests/Databases/PostgreSQL/test_postgresql.ps1 }"
-      rm -rf PythonRestAPI
+      rmdir /S /Q PythonRestAPI
     displayName: 'Test PostgreSQL DB API creation'
 
   - script: |
       python -m venv venv
-      source venv/bin/activate
+      venv\Scripts\activate
       pip install --upgrade pip
       pip install -r requirements.txt
       pwsh -Command "& { ./tests/Databases/SQLServer/test_sqlserver.ps1 }"
-      rm -rf PythonRestAPI
+      rmdir /S /Q PythonRestAPI
     displayName: 'Test SQL Server DB API creation'
     
