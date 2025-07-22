@@ -17,20 +17,19 @@ jobs:
     vmImage: windows-latest
   steps:
   - checkout: self
-  - script: |
-      # Ensure we have full commit history in the CI environment
+  - powershell: |
       git fetch --all --unshallow
 
-      # Find the last non-merge commit before the merge commit (PR source commit)
-      last_commit_message=$(git log -1 --pretty=%s $(git rev-list --no-merges -n 1 HEAD))
+      # Get the last non-merge commit message
+      $last_commit_message = git log -1 --pretty=%s $(git rev-list --no-merges -n 1 HEAD)
 
-      if [[ $last_commit_message =~ version\ ?[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-        echo "Commit message contains a valid version format: $last_commit_message"
-      else
-        echo "Error: The commit message does not contain a valid version format (versionX.X.X)."
-        echo "Last commit message: $last_commit_message"
+      if ($last_commit_message -match 'version\s?[0-9]+\.[0-9]+\.[0-9]+') {
+        Write-Host "Commit message contains a valid version format: $last_commit_message"
+      } else {
+        Write-Host "Error: The commit message does not contain a valid version format (versionX.X.X)."
+        Write-Host "Last commit message: $last_commit_message"
         exit 1
-      fi
+      }
     displayName: "Check commit message format"
 
   - script: |
@@ -38,14 +37,14 @@ jobs:
       refreshenv
       python --version
       if not python --version | findstr "3.11" >nul; then
-        echo 'Python 3.11 não está instalado corretamente!'; exit 1;
+        echo 'Python 3.11 is not installed correctly!'; exit 1;
       fi
       choco install docker-desktop -y
       docker --version
       docker-compose version
       net start com.docker.service
       if not docker info >nul 2>&1; then
-        echo 'Docker não está rodando!'; exit 1;
+        echo 'Docker is not running!'; exit 1;
       fi
     displayName: 'Install and verify Python 3.11 and Docker'
 
