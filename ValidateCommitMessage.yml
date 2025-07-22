@@ -5,7 +5,7 @@ pr:
       - main
 
 pool:
-  vmImage: 'windows-latest'
+  vmImage: 'ubuntu-latest'
 
 variables:
 - group: pythonrest-cli
@@ -36,59 +36,66 @@ jobs:
       }
     displayName: "Check commit message format"
 
-  - powershell: |
-      Write-Host "Installing Docker Desktop..."
-      choco install docker-desktop -y --force
+  - bash: |
+      echo "Installing PowerShell Core..."
+      wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+      sudo dpkg -i packages-microsoft-prod.deb
+      sudo apt-get update
+      sudo apt-get install -y powershell
       
-      Write-Host "Adding Docker tools to PATH for all subsequent steps..."
-      $dockerPath = "C:\Program Files\Docker\Docker\resources\bin"
-      $newPath = "$dockerPath;" + $env:PATH
-      $env:PATH = $newPath
-      Write-Host "##vso[task.setvariable variable=PATH]$newPath"
-      
-      Write-Host "Starting Docker service and waiting for it to be ready..."
-      Start-Service -Name "com.docker.service"
-      $timeout = 180; $elapsed = 0
-      while (-not (docker info 2>$null)) {
-        if ($elapsed -ge $timeout) { throw "Docker daemon did not start within $timeout seconds." }
-        Start-Sleep -Seconds 5
-        $elapsed += 5
-        Write-Host "Still waiting for Docker... ($elapsed s)"
-      }
-      
-      Write-Host "Docker is running."
-      python --version
+      echo "Verifying installations..."
       docker --version
       docker-compose --version
-    displayName: 'Install and verify Python 3.11 and Docker'
+      python --version
+      pwsh --version
+      
+      echo "Starting Docker service..."
+      sudo systemctl start docker
+      sudo systemctl enable docker
+      
+      echo "Waiting for Docker to be ready..."
+      timeout=60
+      elapsed=0
+      while ! docker info >/dev/null 2>&1; do
+        if [ $elapsed -ge $timeout ]; then
+          echo "Docker daemon did not start within $timeout seconds."
+          exit 1
+        fi
+        sleep 2
+        elapsed=$((elapsed + 2))
+        echo "Still waiting for Docker... ($elapsed s)"
+      done
+      
+      echo "Docker is running."
+    displayName: 'Install PowerShell and verify Docker'
 
-  - powershell: |
+  - bash: |
       python -m venv venv
-      .\venv\Scripts\pip.exe install --upgrade pip setuptools wheel
-      .\venv\Scripts\python.exe setup.py sdist
+      ./venv/bin/pip install --upgrade pip setuptools wheel
+      ./venv/bin/python setup.py sdist
     displayName: 'Validate pip package build'
 
-  - powershell: |
+  - bash: |
       python -m venv venv
-      .\venv\Scripts\pip.exe install --upgrade pip
-      .\venv\Scripts\pip.exe install -r requirements.txt
-      pwsh -Command "& { ./tests/Databases/MySQL/test_mysql_pipeline.ps1 }"
-      if (Test-Path -Path "PythonRestAPI") { Remove-Item -Recurse -Force "PythonRestAPI" }
+      ./venv/bin/pip install --upgrade pip
+      ./venv/bin/pip install -r requirements.txt
+      pwsh ./tests/Databases/MySQL/test_mysql_pipeline.ps1
+      if [ -d "PythonRestAPI" ]; then rm -rf "PythonRestAPI"; fi
     displayName: 'Test MySQL DB API creation'
 
-  - powershell: |
+  - bash: |
       python -m venv venv
-      .\venv\Scripts\pip.exe install --upgrade pip
-      .\venv\Scripts\pip.exe install -r requirements.txt
-      pwsh -Command "& { ./tests/Databases/PostgreSQL/test_postgresql_pipeline.ps1 }"
-      if (Test-Path -Path "PythonRestAPI") { Remove-Item -Recurse -Force "PythonRestAPI" }
+      ./venv/bin/pip install --upgrade pip
+      ./venv/bin/pip install -r requirements.txt
+      pwsh ./tests/Databases/PostgreSQL/test_postgresql_pipeline.ps1
+      if [ -d "PythonRestAPI" ]; then rm -rf "PythonRestAPI"; fi
     displayName: 'Test PostgreSQL DB API creation'
 
-  - powershell: |
+  - bash: |
       python -m venv venv
-      .\venv\Scripts\pip.exe install --upgrade pip
-      .\venv\Scripts\pip.exe install -r requirements.txt
-      pwsh -Command "& { ./tests/Databases/SQLServer/test_sqlserver_pipeline.ps1 }"
-      if (Test-Path -Path "PythonRestAPI") { Remove-Item -Recurse -Force "PythonRestAPI" }
+      ./venv/bin/pip install --upgrade pip
+      ./venv/bin/pip install -r requirements.txt
+      pwsh ./tests/Databases/SQLServer/test_sqlserver_pipeline.ps1
+      if [ -d "PythonRestAPI" ]; then rm -rf "PythonRestAPI"; fi
     displayName: 'Test SQL Server DB API creation'
     

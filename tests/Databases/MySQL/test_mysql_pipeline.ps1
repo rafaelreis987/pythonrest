@@ -94,7 +94,11 @@ while ($true) {
 }
 
 # Activate base venv
-$VENV_ACTIVATE = "$PROJECT_ROOT/venv/bin/activate"
+if ($IsWindows) {
+    $VENV_ACTIVATE = "$PROJECT_ROOT/venv/Scripts/activate.ps1"
+} else {
+    $VENV_ACTIVATE = "$PROJECT_ROOT/venv/bin/activate.ps1"
+}
 Write-Log "Activating base venv: $VENV_ACTIVATE"
 
 if (-not (Test-Path $VENV_ACTIVATE)) {
@@ -139,7 +143,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Activate API venv
-$API_VENV_ACTIVATE = "./venv/bin/activate"
+if ($IsWindows) {
+    $API_VENV_ACTIVATE = "./venv/Scripts/activate.ps1"
+} else {
+    $API_VENV_ACTIVATE = "./venv/bin/activate.ps1"
+}
 Write-Log "Activating generated API venv..."
 . $API_VENV_ACTIVATE
 
@@ -154,7 +162,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Start API in background
-$API_LOG = "/tmp/api_output_mysql.log"
+if ($IsWindows) {
+    $API_LOG = "$env:TEMP/api_output_mysql.log"
+} else {
+    $API_LOG = "/tmp/api_output_mysql.log"
+}
 Write-Log "Starting API..."
 $API_PROCESS = Start-Process python -ArgumentList "app.py" -RedirectStandardOutput $API_LOG -RedirectStandardError $API_LOG -PassThru
 

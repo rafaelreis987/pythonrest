@@ -103,7 +103,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Activate generated API venv
-$GENERATED_VENV_ACTIVATE = "./venv/bin/activate"
+if ($IsWindows) {
+    $GENERATED_VENV_ACTIVATE = "./venv/Scripts/activate.ps1"
+} else {
+    $GENERATED_VENV_ACTIVATE = "./venv/bin/activate.ps1"
+}
 Write-Log "Activating virtual environment for generated API..."
 . $GENERATED_VENV_ACTIVATE
 Write-Log "Virtual environment for generated API activated."
