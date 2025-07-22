@@ -199,16 +199,36 @@ if ($LASTEXITCODE -ne 0) {
 # ---------------------------------------------
 # 10. Rodar API
 # ---------------------------------------------
-$API_LOG = "/tmp/api_sqlserver.log"
+$API_LOG = "/tmp/api_output_sqlserver.log"
 
-$API_LOG_OUT = "/tmp/api_sqlserver_out.log"
-$API_LOG_ERR = "/tmp/api_sqlserver_err.log"
+# Garante que o log existe
+New-Item -ItemType File -Path $API_LOG -Force | Out-Null
 
 Write-Log "Iniciando API Flask..."
 $API_PROCESS = Start-Process python -ArgumentList "app.py" `
-    -RedirectStandardOutput $API_LOG_OUT `
-    -RedirectStandardError $API_LOG_ERR `
+    -RedirectStandardOutput $API_LOG `
+    -RedirectStandardError $API_LOG `
     -PassThru
+
+Write-Log "API iniciada com PID $($API_PROCESS.Id)."
+
+Start-Sleep -Seconds 5
+
+if (Test-Path $API_LOG) {
+    Get-Content $API_LOG
+} else {
+    Write-Host "Log file $API_LOG not found."
+}
+
+Write-Log "API started with PID $($API_PROCESS.Id)"
+
+Start-Sleep -Seconds 5
+
+if (Test-Path $API_LOG) {
+    Get-Content $API_LOG
+} else {
+    Write-Host "Log file $API_LOG not found."
+}
 
 
 Start-Sleep -Seconds 5
