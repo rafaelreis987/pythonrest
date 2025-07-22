@@ -72,7 +72,7 @@ jobs:
       python -m venv venv
       .\venv\Scripts\pip.exe install --upgrade pip
       .\venv\Scripts\pip.exe install -r requirements.txt
-      pwsh -Command "& { ./tests/Databases/MySQL/test_mysql.ps1 }"
+      pwsh -Command "& { ./tests/Databases/MySQL/test_mysql_pipeline.ps1 }"
       if (Test-Path -Path "PythonRestAPI") { Remove-Item -Recurse -Force "PythonRestAPI" }
     displayName: 'Test MySQL DB API creation'
 
@@ -80,7 +80,7 @@ jobs:
       python -m venv venv
       .\venv\Scripts\pip.exe install --upgrade pip
       .\venv\Scripts\pip.exe install -r requirements.txt
-      pwsh -Command "& { ./tests/Databases/PostgreSQL/test_postgresql.ps1 }"
+      pwsh -Command "& { ./tests/Databases/PostgreSQL/test_postgresql_pipeline.ps1 }"
       if (Test-Path -Path "PythonRestAPI") { Remove-Item -Recurse -Force "PythonRestAPI" }
     displayName: 'Test PostgreSQL DB API creation'
 
@@ -88,7 +88,7 @@ jobs:
       python -m venv venv
       .\venv\Scripts\pip.exe install --upgrade pip
       .\venv\Scripts\pip.exe install -r requirements.txt
-      pwsh -Command "& { ./tests/Databases/SQLServer/test_sqlserver.ps1 }"
+      pwsh -Command "& { ./tests/Databases/SQLServer/test_sqlserver_pipeline.ps1 }"
       if (Test-Path -Path "PythonRestAPI") { Remove-Item -Recurse -Force "PythonRestAPI" }
     displayName: 'Test SQL Server DB API creation'
     
