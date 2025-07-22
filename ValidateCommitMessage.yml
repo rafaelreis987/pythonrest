@@ -40,9 +40,11 @@ jobs:
       Write-Host "Installing Docker Desktop..."
       choco install docker-desktop -y --force
       
-      Write-Host "Adding Docker tools to PATH..."
+      Write-Host "Adding Docker tools to PATH for all subsequent steps..."
       $dockerPath = "C:\Program Files\Docker\Docker\resources\bin"
-      $env:PATH = "$dockerPath;" + $env:PATH
+      $newPath = "$dockerPath;" + $env:PATH
+      $env:PATH = $newPath
+      Write-Host "##vso[task.setvariable variable=PATH]$newPath"
       
       Write-Host "Starting Docker service and waiting for it to be ready..."
       Start-Service -Name "com.docker.service"
