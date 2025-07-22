@@ -17,12 +17,16 @@ jobs:
     vmImage: windows-latest
   steps:
   - checkout: self
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.11'
+      addToPath: true
+    displayName: 'Set up Python 3.11'
+
   - powershell: |
       git fetch --all --unshallow
-
-      # Get the last non-merge commit message
       $last_commit_message = git log -1 --pretty=%s $(git rev-list --no-merges -n 1 HEAD)
-
       if ($last_commit_message -match 'version\s?[0-9]+\.[0-9]+\.[0-9]+') {
         Write-Host "Commit message contains a valid version format: $last_commit_message"
       } else {
@@ -34,9 +38,6 @@ jobs:
 
   - script: |
       python --version
-      if not python --version | findstr "3.11" >nul; then
-        echo 'Python 3.11 is not installed correctly!'; exit 1;
-      fi
       choco install docker-desktop -y
       docker --version
       docker-compose version
