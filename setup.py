@@ -92,7 +92,9 @@ setup(
         "**Version 0.3.9**\n"
         "* Improve AI model initialization for /mcp/ask.\n\n"
         "**Version 0.4.0**\n"
-        "* Implementing encryption of environment variables.\n"
+        "* Implementing encryption of environment variables.\n\n"
+        "**Version 0.4.1**\n"
+        "* Added api generation tests on validate pipeline.\n"
     ),
     long_description_content_type="text/markdown",
     author='Seven Technologies Cloud',

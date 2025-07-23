@@ -101,6 +101,9 @@ Support for column names that contain unusual characters, like "-", " ", ".", "/
 "**Version 0.4.0**"
 * Implementing encryption of environment variables.
 
+"**Version 0.4.1**"
+* Added api generation tests on validate pipeline.
+
 
 ## Installation
 
